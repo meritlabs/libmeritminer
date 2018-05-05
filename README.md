@@ -12,11 +12,11 @@ Library that mines merit.
 
 ## Compiling
 
-`mkdir build`
-`cd build`
-`cmake ..`
-`make`
-`make install`
+    mkdir build
+    cd build
+    cmake ..
+    make
+    make install
 
 ## Directories
 
