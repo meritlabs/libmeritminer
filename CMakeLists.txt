@@ -12,8 +12,16 @@ link_directories(${Boost_LIBRARY_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
 INCLUDE_DIRECTORIES(include)
+INCLUDE_DIRECTORIES(src/)
+INCLUDE_DIRECTORIES(src/crypto)
+INCLUDE_DIRECTORIES(src/cuckoo)
+INCLUDE_DIRECTORIES(src/blake2)
 
-ADD_LIBRARY(meritminer SHARED src/miner.cpp)
+ADD_LIBRARY(meritminer SHARED 
+    src/miner.cpp
+    src/cuckoo/miner.cpp
+    src/cuckoo/mean_cuckoo.cpp
+    src/blake2/blake2b-ref.c)
 
 ADD_EXECUTABLE(meritminertest src/test.cpp)
 TARGET_LINK_LIBRARIES(meritminertest meritminer)
