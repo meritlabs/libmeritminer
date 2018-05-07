@@ -7,7 +7,7 @@ project(libmeritminer)
 
 #setup boost
 set(Boost_USE_STATIC_LIBS on)
-find_package(Boost COMPONENTS system program_options filesystem regex thread REQUIRED)
+find_package(Boost COMPONENTS log system program_options filesystem regex thread REQUIRED)
 link_directories(${Boost_LIBRARY_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
@@ -16,15 +16,17 @@ INCLUDE_DIRECTORIES(src/)
 INCLUDE_DIRECTORIES(src/crypto)
 INCLUDE_DIRECTORIES(src/cuckoo)
 INCLUDE_DIRECTORIES(src/blake2)
+INCLUDE_DIRECTORIES(src/stratum)
 
 ADD_LIBRARY(meritminer SHARED 
     src/miner.cpp
     src/cuckoo/miner.cpp
     src/cuckoo/mean_cuckoo.cpp
-    src/blake2/blake2b-ref.c)
+    src/blake2/blake2b-ref.c
+    src/stratum/stratum.cpp)
 
 ADD_EXECUTABLE(meritminertest src/test.cpp)
-TARGET_LINK_LIBRARIES(meritminertest meritminer)
+TARGET_LINK_LIBRARIES(meritminertest meritminer ${Boost_LIBRARIES} curl)
 set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
 
 install(TARGETS meritminertest meritminer
