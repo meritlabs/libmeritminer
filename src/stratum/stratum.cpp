@@ -22,8 +22,7 @@ namespace merit
         const size_t BUFFER_SIZE = 2048;
         const size_t RECV_SIZE = (BUFFER_SIZE - 4);
 
-#if LIBCURL_VERSION_NUM >= 0x070f06
-        static int keepalive_callback(
+        int keepalive_callback(
                 void*,
                 curl_socket_t fd,
                 curlsocktype)
@@ -68,22 +67,19 @@ namespace merit
 #endif
             return 0;
         }
-#endif
 
-#if LIBCURL_VERSION_NUM >= 0x071101
-static curl_socket_t grab_callback(
-        void *client,
-        curlsocktype,
-	    curl_sockaddr *addr)
-{
-    assert(client);
-    assert(addr);
+        curl_socket_t grab_callback(
+                void *client,
+                curlsocktype,
+                curl_sockaddr *addr)
+        {
+            assert(client);
+            assert(addr);
 
-	curl_socket_t *sock = reinterpret_cast<curl_socket_t*>(client);
-	*sock = socket(addr->family, addr->socktype, addr->protocol);
-	return *sock;
-}
-#endif
+            curl_socket_t *sock = reinterpret_cast<curl_socket_t*>(client);
+            *sock = socket(addr->family, addr->socktype, addr->protocol);
+            return *sock;
+        }
 
         Client::~Client() 
         {
@@ -154,14 +150,9 @@ static curl_socket_t grab_callback(
             curl_easy_setopt(_curl, CURLOPT_HTTPPROXYTUNNEL, 1);
             curl_easy_setopt(_curl, CURLOPT_CONNECT_ONLY, 1);
 
-#if LIBCURL_VERSION_NUM >= 0x070f06
             curl_easy_setopt(_curl, CURLOPT_SOCKOPTFUNCTION, keepalive_callback);
-
-#if LIBCURL_VERSION_NUM >= 0x071101
             curl_easy_setopt(_curl, CURLOPT_OPENSOCKETFUNCTION, grab_callback);
             curl_easy_setopt(_curl, CURLOPT_OPENSOCKETDATA, &_sock);
-#endif
-#endif
 
             if (curl_easy_perform(_curl)) {
                 BOOST_LOG_TRIVIAL(error) << "Stratum connection failed: " << _curl_err_str;
@@ -169,9 +160,6 @@ static curl_socket_t grab_callback(
                 return false;
             }
 
-#if LIBCURL_VERSION_NUM < 0x071101
-            curl_easy_getinfo(_curl, CURLINFO_LASTSOCKET, reinterpret_cast<long*>&_sock);
-#endif
             BOOST_LOG_TRIVIAL(info) << "Connected to: " << _url;
             return true;
         }
