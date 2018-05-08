@@ -15,12 +15,22 @@
 #include <sys/socket.h>
 #endif
 
+#include <iostream>
+#include <sstream>
+
+namespace pt = boost::property_tree;
+
 namespace merit
 {
     namespace stratum
     {
         const size_t BUFFER_SIZE = 2048;
         const size_t RECV_SIZE = (BUFFER_SIZE - 4);
+
+        const std::string PACKAGE_NAME = "meritminer";
+        const std::string PACKAGE_VERSION = "0.0.1";
+        const std::string USER_AGENT = PACKAGE_NAME + "/" + PACKAGE_VERSION;
+
 
         int keepalive_callback(
                 void*,
@@ -31,15 +41,15 @@ namespace merit
             int keepcnt = 3;
             int keepidle = 50;
             int keepintvl = 50;
-
 #ifndef WIN32
             if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive))) {
                 return 1;
             }
 
 #ifdef __APPLE_CC__
-            if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &tcp_keepintvl, sizeof(tcp_keepintvl)))
+            if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &tcp_keepintvl, sizeof(tcp_keepintvl))) {
                 return 1;
+            }
 #endif
 
 #ifdef __linux
@@ -170,8 +180,188 @@ namespace merit
             cleanup();
         }
 
+        bool is_socket_full(curl_socket_t sock, int timeout)
+        {
+            struct timeval tv;
+            fd_set rd;
+
+            FD_ZERO(&rd);
+            FD_SET(sock, &rd);
+            tv.tv_usec = 0;
+            tv.tv_sec = timeout;
+
+            return select(sock + 1, &rd, NULL, NULL, &tv) > 0;
+        }
+
+        bool parse_json(const std::string& s, pt::ptree& r)
+        try
+        {
+            std::stringstream ss;
+            ss << s;
+
+            pt::read_json(ss, r);
+            return true;
+        } 
+        catch(std::exception& e) 
+        {
+            BOOST_LOG_TRIVIAL(error) << "error parsing json: " << e.what();
+            return false;
+        }
+
+        bool find_session_id(const pt::ptree& p, std::string& session_id)
+        {
+            bool mining_notify_found = false;
+            for(const auto& arr : p) {
+
+                if(arr.second.empty()) {
+                    continue;
+                }
+
+                for(const auto& itm : arr.second) {
+                    auto s = itm.second.get_value<std::string>();
+                    if(mining_notify_found) {
+                        session_id = s;
+                        return true;
+                    }
+
+                    if(s == "mining.notify") {
+                        mining_notify_found = true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        bool parse_hex(const std::string& s, ubytes& res)
+        {
+            std::stringstream tobin;
+            std::istringstream ss(s);
+            for(int i = 0; i < s.size(); i+=2)
+            {
+                unsigned char byte;
+                tobin << std::hex << s[i] << s;
+                tobin >> byte;
+                res.push_back( byte );
+            }
+            return true;
+        }
+
+        bool Client::handle_auth_resp(const std::string& res)
+        {
+            //TODO: handle auth response
+        }
+
+        bool Client::authorize()
+        {
+            std::stringstream req;
+            req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
+            if (!send(req.str()))
+            {
+                BOOST_LOG_TRIVIAL(error) << "error sending authorize request";
+                return false;
+            }
+
+            while (true) {
+                std::string res;
+                if(!recv(res)) {
+                    return true;
+                }
+                BOOST_LOG_TRIVIAL(debug) << res;
+
+                if(!handle_auth_resp(res)) {
+                    break;
+                }
+            }
+
+            return true;
+        }
+
         bool Client::subscribe()
         {
+            std::stringstream req;
+            if (!_session_id.empty()) {
+                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT << "\", \"" << _session_id << "\"]}";
+            } else {
+                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT << "\"]}";
+            }
+
+            if (!send(req.str())) {
+                BOOST_LOG_TRIVIAL(error) << "subscribe failed" << std::endl;
+                return false;
+            }
+
+            if (!is_socket_full(_sock, 30)) {
+                BOOST_LOG_TRIVIAL(error) << "subscribe timed out" << std::endl;
+                return false;
+            }
+
+            std::string resp_line;
+            if(!recv(resp_line)) {
+                return false;
+            }
+
+            pt::ptree resp;
+            if(!parse_json(resp_line, resp)) {
+                BOOST_LOG_TRIVIAL(error) << "error parsing response: " << resp_line;
+                return false;
+            }
+
+            auto result = resp.get_child_optional("result");
+            if(!result) {
+                auto err = resp.get_optional<std::string>("error");
+                if(err) {
+                    BOOST_LOG_TRIVIAL(error) << "subscribe error : " << *err;
+                } else {
+                    BOOST_LOG_TRIVIAL(error) << "unknown subscribe error";
+                }
+                return false;
+            }
+
+            if(result->size() < 3) {
+                BOOST_LOG_TRIVIAL(error) << "not enough values in response";
+                return false;
+            }
+
+            if(!find_session_id(*result, _session_id)) {
+                BOOST_LOG_TRIVIAL(error) << "failed to find the session id";
+                return false;
+            }
+
+            BOOST_LOG_TRIVIAL(info) << "session id: " << _session_id;
+
+            auto res = result->begin();
+            res++;
+
+            auto xnonce1 = res->second.get_value_optional<std::string>();
+            if(!xnonce1) {
+                BOOST_LOG_TRIVIAL(error) << "invalid extranonce";
+                return false;
+            }
+
+            BOOST_LOG_TRIVIAL(info) << "xnonce1: " << *xnonce1;
+
+            res++;
+            auto xnonce2_size = res->second.get_value_optional<int>();
+            if(!xnonce2_size) {
+                BOOST_LOG_TRIVIAL(error) << "cannot parse extranonce size";
+                return false;
+            }
+
+            _xnonce2_size = *xnonce2_size;
+
+            BOOST_LOG_TRIVIAL(info) << "xnonce2 size: " << *xnonce2_size;
+
+            if (_xnonce2_size < 0 || _xnonce2_size > 100) {
+                BOOST_LOG_TRIVIAL(error) << "invalid extranonce2 size";
+                return false;
+            }
+
+            if(!parse_hex(*xnonce1, _xnonce1)) {
+                BOOST_LOG_TRIVIAL(error) << "error parsing extranonce1";
+            }
+            _next_diff = 1.0;
+            BOOST_LOG_TRIVIAL(info) << "nextdiff: " << _next_diff;
+
             return true;
         }
 
@@ -182,7 +372,7 @@ namespace merit
                 return false;
             }
 
-            BOOST_LOG_TRIVIAL(debug) << message;
+            BOOST_LOG_TRIVIAL(debug) << "SEND: " << message;
 
             size_t sent = 0;
             auto size = message.size();
@@ -196,16 +386,15 @@ namespace merit
                     return false;
                 }
 
-                size_t n;
+                size_t n = 0;
                 CURLcode rc = curl_easy_send(_curl, message.data() + sent, size, &n);
-                if (rc != CURLE_OK) {
-                    if (rc != CURLE_AGAIN) {
-			            n = 0;
-                    }
+                if (rc != CURLE_OK && rc != CURLE_AGAIN) {
+                    n = 0;
                 }
                 sent += n;
                 size -=n;
             }
+            assert(sent == message.size());
             return true;
         }
 
@@ -214,10 +403,72 @@ namespace merit
             return std::find(b.begin(), b.end(), '\n') != b.end();
         }
 
+        bool blocked()
+        {
+#ifdef WIN32
+            return (WSAGetLastError() == WSAEWOULDBLOCK);
+#else
+            return errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
+        }
+
         bool Client::recv(std::string& message)
         {
             assert(_curl);
 
+            if (!has_line_ending(_sockbuf)) {
+                auto start = std::chrono::system_clock::now();
+
+                if (!is_socket_full(_sock, 60)) {
+                    BOOST_LOG_TRIVIAL(error) << "recieve timed out" << std::endl;
+                    return false;
+                }
+
+                std::chrono::duration<double> duration;
+                do {
+                    bytes s(BUFFER_SIZE, 0);
+                    size_t n;
+
+                    CURLcode rc = curl_easy_recv(_curl, s.data(), RECV_SIZE, &n);
+                    if (rc == CURLE_OK && !n) {
+                        BOOST_LOG_TRIVIAL(error) << "recieved no data" << std::endl;
+                        return false;
+                    }
+                    if (rc != CURLE_OK) {
+                        if (rc != CURLE_AGAIN || !is_socket_full(_sock, 1)) {
+                            BOOST_LOG_TRIVIAL(error) << "error recieving data" << std::endl;
+                            return false;
+                        }
+                    } else {
+                        _sockbuf.insert(_sockbuf.end(), s.data(), s.data()+n);
+
+                    }
+
+                    auto end = std::chrono::system_clock::now();
+                    duration = end - start;
+
+                } while (duration.count() < 60 && !has_line_ending(_sockbuf));
+            }
+
+            auto nl = std::find(_sockbuf.begin(), _sockbuf.end(), '\n');
+            if (nl == _sockbuf.end()) {
+                BOOST_LOG_TRIVIAL(error) << "failed to parse the response" << std::endl;
+                return false;
+            }
+
+            auto size = std::distance(_sockbuf.begin(), nl);
+            message.resize(size);
+            std::copy(_sockbuf.begin(), nl, message.begin());
+
+            if (_sockbuf.size() > size + 1) {
+                std::copy(_sockbuf.begin() + size + 1, _sockbuf.end(), _sockbuf.begin());
+                _sockbuf.resize(_sockbuf.size() - size + 1);
+            } else {
+                _sockbuf.clear();
+            }
+
+            BOOST_LOG_TRIVIAL(debug) << "RECV: " << message;
+            return true;
         }
     }
 }

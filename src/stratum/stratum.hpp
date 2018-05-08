@@ -49,6 +49,7 @@ namespace merit
 
                 void disconnect();
                 bool subscribe();
+                bool authorize();
 
             private:
                 bool send(const std::string&);
@@ -72,7 +73,6 @@ namespace merit
                 std::mutex _sock_mutex;
                 std::mutex _work_mutex;
 
-                size_t _xnonce1_size;
                 std::vector<unsigned char> _xnonce1;
                 size_t _xnonce2_size;
                 Job _job;

@@ -26,7 +26,21 @@ namespace merit
             const std::string& pass)
     {
         stratum::CurlOptions opts;
-        return client.connect(url, user, pass, opts);
+        if(!client.connect(url, user, pass, opts)) {
+            BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << url; 
+            return false;
+        }
+        if(!client.subscribe()) {
+            BOOST_LOG_TRIVIAL(error) << "error subscribing to stratum server: " << url; 
+            return false;
+        }
+
+        if(!client.authorize()) {
+            BOOST_LOG_TRIVIAL(error) << "error authorize to stratum server: " << url; 
+            return false;
+        }
+
+        return true;
     }
     
     void init_logging()
