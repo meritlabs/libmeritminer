@@ -6,6 +6,11 @@
 #include <mutex>
 #include <array>
 #include <vector>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+namespace pt = boost::property_tree;
+
 namespace merit
 {
     namespace stratum
@@ -19,8 +24,7 @@ namespace merit
             size_t coinbase_size = 0;
             ubytes coinbase;
             ubytes xnonce2;
-            int merkle_count = 0;
-            unsigned char **merkle = nullptr;
+            std::vector<bytes> merkel;
             std::array<unsigned char,4> version;
             std::array<unsigned char,4> nbites;
             std::array<unsigned char,4> nedgebits;
@@ -56,6 +60,12 @@ namespace merit
                 bool recv(std::string&);
                 void initbuffers();
                 void cleanup();
+                bool handle_command(const std::string& res);
+                bool mining_notify(const pt::ptree& params);
+                bool mining_difficulty(const pt::ptree& params);
+                bool client_reconnect(const pt::ptree& params);
+                bool client_get_version(const pt::ptree& params);
+                bool client_show_message(const pt::ptree& params);
 
             private:
                 std::string _url;

@@ -246,9 +246,127 @@ namespace merit
             return true;
         }
 
-        bool Client::handle_auth_resp(const std::string& res)
+        bool Client::mining_notify(const pt::ptree& params)
         {
-            //TODO: handle auth response
+            auto v = params.begin();
+
+            auto job_id = v->second.get_value_optional<std::string>(); v++;
+            if(!job_id) { return false; }
+
+            auto prev_hash = v->second.get_value_optional<std::string>(); v++;
+            if(!prev_hash) { return false; }
+
+            auto coinbase1 = v->second.get_value_optional<std::string>(); v++;
+            if(!coinbase1) { return false; }
+
+            auto coinbase2 = v->second.get_value_optional<std::string>(); v++;
+            if(!coinbase2) { return false; }
+
+            auto merkel = v->second; v++;
+            if(merkel.empty()) { return false; }
+
+            auto version = v->second.get_value_optional<std::string>(); v++;
+            if(!version) { return false; }
+
+            auto nbits = v->second.get_value_optional<std::string>(); v++;
+            if(!nbits) { return false; }
+
+            //auto edgebits = v->second.get_value_optional<std::string>(); v++;
+            //if(!edgebits) { return false; }
+            //
+            auto time = v->second.get_value_optional<std::string>(); v++;
+            if(!time) { return false; }
+
+            auto is_clean = v->second.get_value_optional<bool>(); v++;
+            if(!is_time) { return false; }
+
+            if(prevhash->size() != 64) { return false; }
+            if(version->size() != 8) { return false; }
+            if(nbits->size() != 8) { return false; }
+            //if(edgebits->size() != 2) { return false; }
+            if(time->size() != 8) { return false; }
+
+            std::vector<bytes> merkel;
+
+
+            return true;
+        }
+
+        bool Client::mining_difficulty(const pt::ptree& params)
+        {
+            return true;
+        }
+
+        bool Client::client_reconnect(const pt::ptree& params)
+        {
+            return true;
+        }
+
+        bool Client::client_get_version(const pt::ptree& params)
+        {
+            return true;
+        }
+
+        bool Client::client_show_message(const pt::ptree& params)
+        {
+            return true;
+        }
+
+        bool Client::handle_command(const std::string& res)
+        {
+            pt::ptree val;
+            if(!parse_json(val)) {
+                BOOST_LOG_TRIVIAL(error) << "error parsing stratum response";
+                return false;
+            }
+
+            auto method = val.get_optional<std::string>("method");
+            if(!method) {
+                BOOST_LOG_TRIVIAL(error) << "unable to get method from response";
+                return false;
+            }
+
+            auto params = val.get_child_optional("params");
+            if(!params) {
+                BOOST_LOG_TRIVIAL(error) << "unable to get params from response";
+                return false;
+            }
+
+            if(method == "mining.notify") {
+                if(!mining_notify(params)) {
+                    BOOST_LOG_TRIVIAL(error) << "unable to set mining.notify";
+                    return false;
+                }
+            }
+            if(method == "mining.difficulty") {
+                if(!mining_difficulty(params)) {
+                    BOOST_LOG_TRIVIAL(error) << "unable to set mining.difficulty";
+                    return false;
+                }
+            }
+
+            if(method == "client.reconnect") {
+                if(!client_reconnect(params)) {
+                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.reconnect";
+                    return false;
+                }
+            }
+
+            if(method == "client.get_version") {
+                if(!client_get_version(params)) {
+                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.get_version";
+                    return false;
+                }
+            }
+
+            if(method == "client.show_message") {
+                if(!client_show_message(params)) {
+                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.show_message";
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         bool Client::authorize()
@@ -268,7 +386,7 @@ namespace merit
                 }
                 BOOST_LOG_TRIVIAL(debug) << res;
 
-                if(!handle_auth_resp(res)) {
+                if(!handle_command(res)) {
                     break;
                 }
             }
