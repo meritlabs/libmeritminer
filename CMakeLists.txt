@@ -26,7 +26,7 @@ ADD_LIBRARY(meritminer SHARED
     src/stratum/stratum.cpp)
 
 ADD_EXECUTABLE(meritminertest src/test.cpp)
-TARGET_LINK_LIBRARIES(meritminertest meritminer ${Boost_LIBRARIES} curl)
+TARGET_LINK_LIBRARIES(meritminertest meritminer ${Boost_LIBRARIES})
 set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
 
 install(TARGETS meritminertest meritminer

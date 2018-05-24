@@ -6,15 +6,6 @@
 
 #include <boost/log/trivial.hpp>
 
-#if defined(WIN32)
-#include <mstcpip.h>
-#include <winsock2.h>
-#else
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#endif
-
 #include <iostream>
 #include <sstream>
 
@@ -31,64 +22,10 @@ namespace merit
         const std::string PACKAGE_VERSION = "0.0.1";
         const std::string USER_AGENT = PACKAGE_NAME + "/" + PACKAGE_VERSION;
 
-
-        int keepalive_callback(
-                void*,
-                curl_socket_t fd,
-                curlsocktype)
+        Client::Client() :
+            _state{Disconnected},
+            _socket{_service}
         {
-            int keepalive = 1;
-            int keepcnt = 3;
-            int keepidle = 50;
-            int keepintvl = 50;
-#ifndef WIN32
-            if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive))) {
-                return 1;
-            }
-
-#ifdef __APPLE_CC__
-            if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &tcp_keepintvl, sizeof(tcp_keepintvl))) {
-                return 1;
-            }
-#endif
-
-#ifdef __linux
-            if (setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl))) {
-                return 1;
-            }
-            if (setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt))) {
-                return 1;
-            }
-            if (setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle))) {
-                return 1;
-            }
-#endif
-
-#else 
-            tcp_keepalive k;
-            k.onoff = 1;
-            k.keepalivetime = tcp_keepidle * 1000;
-            k.keepaliveinterval = tcp_keepintvl * 1000;
-
-            DWORD out;
-            if (WSAIoctl(fd, SIO_KEEPALIVE_VALS, &k, sizeof(k), nullptr, 0, &out, nullptr, nullptr)) {
-                return 1;
-            }
-#endif
-            return 0;
-        }
-
-        curl_socket_t grab_callback(
-                void *client,
-                curlsocktype,
-                curl_sockaddr *addr)
-        {
-            assert(client);
-            assert(addr);
-
-            curl_socket_t *sock = reinterpret_cast<curl_socket_t*>(client);
-            *sock = socket(addr->family, addr->socktype, addr->protocol);
-            return *sock;
         }
 
         Client::~Client() 
@@ -96,101 +33,39 @@ namespace merit
             disconnect();
         }
 
-        void Client::initbuffers()
-        {
-            if (!_sockbuf.empty()) {
-                _sockbuf.resize(BUFFER_SIZE);
-                _sockbuf[0] = '\0';
-            }
-        }
-
-        void Client::cleanup()
-        {
-            if (_curl) {
-                curl_easy_cleanup(_curl);
-                _curl = nullptr;
-            }
-            _sockbuf.clear();
-        }
-
         bool Client::connect(
                     const std::string& iurl, 
                     const std::string& iuser, 
-                    const std::string& ipass,
-                    const CurlOptions& iopts)
+                    const std::string& ipass)
         {
-            std::lock_guard<std::mutex> guard{_sock_mutex};
+            if(_state == Connected) {
+                disconnect();
+            }
+
             _url = iurl;
             _user = iuser;
             _pass = ipass;
-            _opts = iopts;
 
-            cleanup();
+            auto host_pos = _url.find("://") + 3; 
+            auto port_pos = _url.find(":", 14) + 1;
+            auto host = _url.substr(host_pos, port_pos - host_pos - 1);
+            auto port = _url.substr(port_pos);
 
-            _curl = curl_easy_init();
+            BOOST_LOG_TRIVIAL(info) << "HOST: " << host;
+            BOOST_LOG_TRIVIAL(info) << "PORT: " << port;
 
-            if (!_curl) {
-                BOOST_LOG_TRIVIAL(error) << "CURL failed to initialize";
-                return false;
-            }
+            asio::ip::tcp::resolver resolver{_service};
+            asio::ip::tcp::resolver::query query{host, port};
+            auto endpoints = resolver.resolve(query);
 
-            initbuffers();
-
-            _curl_url = "http" + _url.substr(11);
-
-            if (_opts.protocol) {
-                curl_easy_setopt(_curl, CURLOPT_VERBOSE, 1);
-            }
-
-            if (!_opts.cert.empty()) {
-                curl_easy_setopt(_curl, CURLOPT_CAINFO, _opts.cert.c_str());
-            }
-
-            if (!_opts.proxy.empty()) {
-                curl_easy_setopt(_curl, CURLOPT_PROXY, _opts.proxy.c_str());
-                curl_easy_setopt(_curl, CURLOPT_PROXYTYPE, _opts.proxy_type);
-            }
-
-            curl_easy_setopt(_curl, CURLOPT_URL, _curl_url.c_str());
-            curl_easy_setopt(_curl, CURLOPT_ERRORBUFFER, &_curl_err_str[0]);
-            curl_easy_setopt(_curl, CURLOPT_FRESH_CONNECT, 1);
-            curl_easy_setopt(_curl, CURLOPT_CONNECTTIMEOUT, 35);
-            curl_easy_setopt(_curl, CURLOPT_NOSIGNAL, 1);
-            curl_easy_setopt(_curl, CURLOPT_TCP_NODELAY, 1);
-            curl_easy_setopt(_curl, CURLOPT_HTTPPROXYTUNNEL, 1);
-            curl_easy_setopt(_curl, CURLOPT_CONNECT_ONLY, 1);
-
-            curl_easy_setopt(_curl, CURLOPT_SOCKOPTFUNCTION, keepalive_callback);
-            curl_easy_setopt(_curl, CURLOPT_OPENSOCKETFUNCTION, grab_callback);
-            curl_easy_setopt(_curl, CURLOPT_OPENSOCKETDATA, &_sock);
-
-            if (curl_easy_perform(_curl)) {
-                BOOST_LOG_TRIVIAL(error) << "Stratum connection failed: " << _curl_err_str;
-                cleanup();
-                return false;
-            }
-
-            BOOST_LOG_TRIVIAL(info) << "Connected to: " << _url;
+            boost::asio::connect(_socket, endpoints);
             return true;
         }
 
         void Client::disconnect()
         {
             std::lock_guard<std::mutex> guard{_sock_mutex};
-            cleanup();
-        }
-
-        bool is_socket_full(curl_socket_t sock, int timeout)
-        {
-            struct timeval tv;
-            fd_set rd;
-
-            FD_ZERO(&rd);
-            FD_SET(sock, &rd);
-            tv.tv_usec = 0;
-            tv.tv_sec = timeout;
-
-            return select(sock + 1, &rd, NULL, NULL, &tv) > 0;
+            _socket.close();
         }
 
         bool parse_json(const std::string& s, pt::ptree& r)
@@ -262,8 +137,8 @@ namespace merit
             auto coinbase2 = v->second.get_value_optional<std::string>(); v++;
             if(!coinbase2) { return false; }
 
-            auto merkel = v->second; v++;
-            if(merkel.empty()) { return false; }
+            auto merkel_count = v->second; v++;
+            if(merkel_count.empty()) { return false; }
 
             auto version = v->second.get_value_optional<std::string>(); v++;
             if(!version) { return false; }
@@ -278,9 +153,9 @@ namespace merit
             if(!time) { return false; }
 
             auto is_clean = v->second.get_value_optional<bool>(); v++;
-            if(!is_time) { return false; }
+            if(!is_clean) { return false; }
 
-            if(prevhash->size() != 64) { return false; }
+            if(prev_hash->size() != 64) { return false; }
             if(version->size() != 8) { return false; }
             if(nbits->size() != 8) { return false; }
             //if(edgebits->size() != 2) { return false; }
@@ -315,7 +190,7 @@ namespace merit
         bool Client::handle_command(const std::string& res)
         {
             pt::ptree val;
-            if(!parse_json(val)) {
+            if(!parse_json(res, val)) {
                 BOOST_LOG_TRIVIAL(error) << "error parsing stratum response";
                 return false;
             }
@@ -332,35 +207,28 @@ namespace merit
                 return false;
             }
 
-            if(method == "mining.notify") {
-                if(!mining_notify(params)) {
+            if(*method == "mining.notify") {
+                if(!mining_notify(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to set mining.notify";
                     return false;
                 }
-            }
-            if(method == "mining.difficulty") {
-                if(!mining_difficulty(params)) {
+            } else if(*method == "mining.difficulty") {
+                if(!mining_difficulty(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to set mining.difficulty";
                     return false;
                 }
-            }
-
-            if(method == "client.reconnect") {
-                if(!client_reconnect(params)) {
+            } else if(*method == "client.reconnect") {
+                if(!client_reconnect(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to execute client.reconnect";
                     return false;
                 }
-            }
-
-            if(method == "client.get_version") {
-                if(!client_get_version(params)) {
+            } else if(*method == "client.get_version") {
+                if(!client_get_version(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to execute client.get_version";
                     return false;
                 }
-            }
-
-            if(method == "client.show_message") {
-                if(!client_show_message(params)) {
+            } else if(*method == "client.show_message") {
+                if(!client_show_message(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to execute client.show_message";
                     return false;
                 }
@@ -407,12 +275,11 @@ namespace merit
                 BOOST_LOG_TRIVIAL(error) << "subscribe failed" << std::endl;
                 return false;
             }
+            return subscribe_resp();
+        }
 
-            if (!is_socket_full(_sock, 30)) {
-                BOOST_LOG_TRIVIAL(error) << "subscribe timed out" << std::endl;
-                return false;
-            }
-
+        bool Client::subscribe_resp()
+        {
             std::string resp_line;
             if(!recv(resp_line)) {
                 return false;
@@ -481,39 +348,16 @@ namespace merit
             BOOST_LOG_TRIVIAL(info) << "nextdiff: " << _next_diff;
 
             return true;
+
         }
 
         bool Client::send(const std::string& message)
         {
-            std::lock_guard<std::mutex> guard{_sock_mutex};
-            if(!_curl) {
-                return false;
-            }
-
             BOOST_LOG_TRIVIAL(debug) << "SEND: " << message;
-
-            size_t sent = 0;
-            auto size = message.size();
-            while(size > 0) {
-                fd_set w;
-                FD_ZERO(&w);
-                FD_SET(_sock, &w);
-		        timeval timeout{0, 0};
-
-                if (select(_sock + 1, NULL, &w, NULL, &timeout) < 1) {
-                    return false;
-                }
-
-                size_t n = 0;
-                CURLcode rc = curl_easy_send(_curl, message.data() + sent, size, &n);
-                if (rc != CURLE_OK && rc != CURLE_AGAIN) {
-                    n = 0;
-                }
-                sent += n;
-                size -=n;
-            }
-            assert(sent == message.size());
-            return true;
+            std::lock_guard<std::mutex> guard{_sock_mutex};
+            boost::system::error_code error;
+            asio::write(_socket, boost::asio::buffer(message), error);
+            return !error;
         }
 
         bool has_line_ending(const bytes& b)
@@ -521,46 +365,22 @@ namespace merit
             return std::find(b.begin(), b.end(), '\n') != b.end();
         }
 
-        bool blocked()
-        {
-#ifdef WIN32
-            return (WSAGetLastError() == WSAEWOULDBLOCK);
-#else
-            return errno == EAGAIN || errno == EWOULDBLOCK;
-#endif
-        }
-
         bool Client::recv(std::string& message)
         {
-            assert(_curl);
-
             if (!has_line_ending(_sockbuf)) {
                 auto start = std::chrono::system_clock::now();
-
-                if (!is_socket_full(_sock, 60)) {
-                    BOOST_LOG_TRIVIAL(error) << "recieve timed out" << std::endl;
-                    return false;
-                }
 
                 std::chrono::duration<double> duration;
                 do {
                     bytes s(BUFFER_SIZE, 0);
-                    size_t n;
-
-                    CURLcode rc = curl_easy_recv(_curl, s.data(), RECV_SIZE, &n);
-                    if (rc == CURLE_OK && !n) {
-                        BOOST_LOG_TRIVIAL(error) << "recieved no data" << std::endl;
+                    boost::system::error_code error;
+                    auto len = _socket.read_some(asio::buffer(s), error);
+                    if(error && error != boost::asio::error::eof) {
+                        BOOST_LOG_TRIVIAL(error) << "error recieving data: " << error << std::endl;
                         return false;
-                    }
-                    if (rc != CURLE_OK) {
-                        if (rc != CURLE_AGAIN || !is_socket_full(_sock, 1)) {
-                            BOOST_LOG_TRIVIAL(error) << "error recieving data" << std::endl;
-                            return false;
-                        }
-                    } else {
-                        _sockbuf.insert(_sockbuf.end(), s.data(), s.data()+n);
-
-                    }
+                    } 
+                    
+                    _sockbuf.insert(_sockbuf.end(), s.data(), s.data()+len);
 
                     auto end = std::chrono::system_clock::now();
                     duration = end - start;

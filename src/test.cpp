@@ -6,7 +6,7 @@ int main(int argc, char** argv)
 {
     merit::init_logging();
     merit::test();
-    if(!merit::connect_stratum("stratum+tcp://127.0.0.1:3333", "maxim", "foo")) {
+    if(!merit::connect_stratum("stratum+tcp://testnet.pool.merit.me:3333", "max", "foo")) {
         std::cerr << "Error connecting" << std::endl;
         return 1;
     }

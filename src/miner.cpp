@@ -25,8 +25,7 @@ namespace merit
             const std::string& user,
             const std::string& pass)
     {
-        stratum::CurlOptions opts;
-        if(!client.connect(url, user, pass, opts)) {
+        if(!client.connect(url, user, pass)) {
             BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << url; 
             return false;
         }

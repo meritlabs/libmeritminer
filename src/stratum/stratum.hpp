@@ -1,15 +1,17 @@
 #ifndef MERIT_MINER_STRATUM_H
 #define MERIT_MINER_STRATUM_H
 
-#include <curl/curl.h>
 #include <thread>
 #include <mutex>
 #include <array>
 #include <vector>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/asio.hpp>
+#include <thread>
 
 namespace pt = boost::property_tree;
+namespace asio = boost::asio;
 
 namespace merit
 {
@@ -33,23 +35,15 @@ namespace merit
             double diff = 0.0;
         };
 
-        struct CurlOptions
-        {
-            bool protocol = false;
-            std::string cert;
-            std::string proxy;
-            long proxy_type = 0;
-        };
-
         struct Client {
             public:
 
+                Client();
                 ~Client();
                 bool connect(
                         const std::string& url, 
                         const std::string& user, 
-                        const std::string& pass,
-                        const CurlOptions& opts);
+                        const std::string& pass);
 
                 void disconnect();
                 bool subscribe();
@@ -58,8 +52,8 @@ namespace merit
             private:
                 bool send(const std::string&);
                 bool recv(std::string&);
-                void initbuffers();
                 void cleanup();
+                bool subscribe_resp();
                 bool handle_command(const std::string& res);
                 bool mining_notify(const pt::ptree& params);
                 bool mining_difficulty(const pt::ptree& params);
@@ -68,16 +62,19 @@ namespace merit
                 bool client_show_message(const pt::ptree& params);
 
             private:
+                enum State {
+                    Disconnected,
+                    Connected,
+                    Subscribed,
+                    Authorized,
+                    Method,
+                } _state;
+
                 std::string _url;
                 std::string _user;
                 std::string _pass;
-                CurlOptions _opts;
-                std::string _curl_url;
                 std::string _session_id;
                 bytes _sockbuf;
-                CURL *_curl = nullptr;
-                char _curl_err_str[CURL_ERROR_SIZE];
-                curl_socket_t _sock;
 
                 double _next_diff;
                 std::mutex _sock_mutex;
@@ -87,6 +84,8 @@ namespace merit
                 size_t _xnonce2_size;
                 Job _job;
                 pthread_mutex_t _work_lock;
+                asio::io_service _service;
+                asio::ip::tcp::socket _socket;
         };
 
         bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);
