@@ -45,6 +45,16 @@ namespace merit
     void init_logging()
     {
     }
+
+    void run_stratum()
+    {
+        client.run();
+    }
+
+    void stop_stratum()
+    {
+        client.stop();
+    }
 }
 
 

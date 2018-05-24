@@ -9,6 +9,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio.hpp>
 #include <thread>
+#include <atomic>
 
 namespace pt = boost::property_tree;
 namespace asio = boost::asio;
@@ -21,16 +22,16 @@ namespace merit
         using bytes = std::vector<char>;
 
         struct Job {
-            std::string job_id;
-            std::array<unsigned char,32> prevhash;
-            size_t coinbase_size = 0;
+            std::string id;
+            ubytes prevhash;
             ubytes coinbase;
-            ubytes xnonce2;
-            std::vector<bytes> merkel;
-            std::array<unsigned char,4> version;
-            std::array<unsigned char,4> nbites;
-            std::array<unsigned char,4> nedgebits;
-            std::array<unsigned char,4> ntime;
+            size_t coinbase1_size;
+            ubytes::iterator xnonce2;
+            std::vector<ubytes> merkle;
+            ubytes version;
+            ubytes nbits;
+            int nedgebits;
+            ubytes time;
             bool clean = false;
             double diff = 0.0;
         };
@@ -48,6 +49,8 @@ namespace merit
                 void disconnect();
                 bool subscribe();
                 bool authorize();
+                bool run();
+                void stop();
 
             private:
                 bool send(const std::string&);
@@ -86,6 +89,7 @@ namespace merit
                 pthread_mutex_t _work_lock;
                 asio::io_service _service;
                 asio::ip::tcp::socket _socket;
+                std::atomic<bool> _running;
         };
 
         bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);

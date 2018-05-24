@@ -11,5 +11,7 @@ namespace merit
             const std::string& user,
             const std::string& pass);
     void init_logging();
+    void run_stratum();
+    void stop_stratum();
 }
 #endif //MERITMINER_H

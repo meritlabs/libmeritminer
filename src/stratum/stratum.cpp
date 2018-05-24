@@ -15,12 +15,16 @@ namespace merit
 {
     namespace stratum
     {
-        const size_t BUFFER_SIZE = 2048;
-        const size_t RECV_SIZE = (BUFFER_SIZE - 4);
+        namespace
+        {
+            const size_t MAX_ALLOC_SIZE = 2*1024*1024;
+            const size_t BUFFER_SIZE = 2048;
+            const size_t RECV_SIZE = (BUFFER_SIZE - 4);
 
-        const std::string PACKAGE_NAME = "meritminer";
-        const std::string PACKAGE_VERSION = "0.0.1";
-        const std::string USER_AGENT = PACKAGE_NAME + "/" + PACKAGE_VERSION;
+            const std::string PACKAGE_NAME = "meritminer";
+            const std::string PACKAGE_VERSION = "0.0.1";
+            const std::string USER_AGENT = PACKAGE_NAME + "/" + PACKAGE_VERSION;
+        }
 
         Client::Client() :
             _state{Disconnected},
@@ -107,7 +111,8 @@ namespace merit
             return false;
         }
 
-        bool parse_hex(const std::string& s, ubytes& res)
+        template<class C>
+        bool parse_hex(const std::string& s, C& res)
         {
             std::stringstream tobin;
             std::istringstream ss(s);
@@ -125,11 +130,12 @@ namespace merit
         {
             auto v = params.begin();
 
+
             auto job_id = v->second.get_value_optional<std::string>(); v++;
             if(!job_id) { return false; }
 
-            auto prev_hash = v->second.get_value_optional<std::string>(); v++;
-            if(!prev_hash) { return false; }
+            auto prevhash = v->second.get_value_optional<std::string>(); v++;
+            if(!prevhash) { return false; }
 
             auto coinbase1 = v->second.get_value_optional<std::string>(); v++;
             if(!coinbase1) { return false; }
@@ -137,8 +143,7 @@ namespace merit
             auto coinbase2 = v->second.get_value_optional<std::string>(); v++;
             if(!coinbase2) { return false; }
 
-            auto merkel_count = v->second; v++;
-            if(merkel_count.empty()) { return false; }
+            auto merkle_array = v->second; v++;
 
             auto version = v->second.get_value_optional<std::string>(); v++;
             if(!version) { return false; }
@@ -146,23 +151,56 @@ namespace merit
             auto nbits = v->second.get_value_optional<std::string>(); v++;
             if(!nbits) { return false; }
 
-            //auto edgebits = v->second.get_value_optional<std::string>(); v++;
-            //if(!edgebits) { return false; }
-            //
+            auto edgebits = v->second.get_value_optional<int>(); v++;
+            if(!edgebits) { return false; }
+
             auto time = v->second.get_value_optional<std::string>(); v++;
             if(!time) { return false; }
 
             auto is_clean = v->second.get_value_optional<bool>(); v++;
             if(!is_clean) { return false; }
 
-            if(prev_hash->size() != 64) { return false; }
+            if(prevhash->size() != 64) { return false; }
             if(version->size() != 8) { return false; }
             if(nbits->size() != 8) { return false; }
-            //if(edgebits->size() != 2) { return false; }
             if(time->size() != 8) { return false; }
 
-            std::vector<bytes> merkel;
+            if(!parse_hex(*prevhash, _job.prevhash)) { return false;}
+            if(!parse_hex(*version, _job.version)) { return false;}
+            if(!parse_hex(*nbits, _job.nbits)) { return false;}
+            if(!parse_hex(*time, _job.time)) { return false;}
 
+            _job.nedgebits = *edgebits;
+
+            _job.coinbase1_size = coinbase1->size()/2;
+
+            if(!parse_hex(*coinbase1, _job.coinbase)) { return false; } 
+            _job.coinbase.insert(_job.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
+
+            const auto xnonce2_start = _job.coinbase.size();
+
+            _job.coinbase.insert(_job.coinbase.end(), _xnonce2_size, 0);
+            if(!parse_hex(*coinbase2, _job.coinbase)) { return false; } 
+
+            _job.xnonce2 = _job.coinbase.begin();
+            std::advance(_job.xnonce2, xnonce2_start);
+
+            _job.id = *job_id;
+
+            //TODO fill merkle tree
+            _job.merkle.clear();
+            for(const auto& hex : merkle_array) {
+                std::string s = hex.second.get_value<std::string>();
+                ubytes bin;
+                if(!parse_hex(s, bin)) {
+                    return false;
+                }
+
+                _job.merkle.push_back(bin);
+            }
+
+            _job.diff = _next_diff;
+            _job.clean = *is_clean;
 
             return true;
         }
@@ -197,8 +235,7 @@ namespace merit
 
             auto method = val.get_optional<std::string>("method");
             if(!method) {
-                BOOST_LOG_TRIVIAL(error) << "unable to get method from response";
-                return false;
+                return true;
             }
 
             auto params = val.get_child_optional("params");
@@ -247,10 +284,17 @@ namespace merit
                 return false;
             }
 
-            while (true) {
+            return true;
+        }
+
+        bool Client::run()
+        {
+            _running = true;
+            while (_running) {
                 std::string res;
                 if(!recv(res)) {
-                    return true;
+                    BOOST_LOG_TRIVIAL(error) << "error receiving";
+                    return false;
                 }
                 BOOST_LOG_TRIVIAL(debug) << res;
 
@@ -258,8 +302,12 @@ namespace merit
                     break;
                 }
             }
-
             return true;
+        }
+
+        void Client::stop()
+        {
+            _running = false;
         }
 
         bool Client::subscribe()
@@ -376,7 +424,7 @@ namespace merit
                     boost::system::error_code error;
                     auto len = _socket.read_some(asio::buffer(s), error);
                     if(error && error != boost::asio::error::eof) {
-                        BOOST_LOG_TRIVIAL(error) << "error recieving data: " << error << std::endl;
+                        BOOST_LOG_TRIVIAL(error) << "error receiving data: " << error << std::endl;
                         return false;
                     } 
                     
@@ -390,8 +438,7 @@ namespace merit
 
             auto nl = std::find(_sockbuf.begin(), _sockbuf.end(), '\n');
             if (nl == _sockbuf.end()) {
-                BOOST_LOG_TRIVIAL(error) << "failed to parse the response" << std::endl;
-                return false;
+                return true;
             }
 
             auto size = std::distance(_sockbuf.begin(), nl);
@@ -400,7 +447,7 @@ namespace merit
 
             if (_sockbuf.size() > size + 1) {
                 std::copy(_sockbuf.begin() + size + 1, _sockbuf.end(), _sockbuf.begin());
-                _sockbuf.resize(_sockbuf.size() - size + 1);
+                _sockbuf.resize(_sockbuf.size() - size - 1);
             } else {
                 _sockbuf.clear();
             }

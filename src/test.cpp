@@ -10,6 +10,6 @@ int main(int argc, char** argv)
         std::cerr << "Error connecting" << std::endl;
         return 1;
     }
-    while(true) {}
+    merit::run_stratum();
     return 0;
 }
