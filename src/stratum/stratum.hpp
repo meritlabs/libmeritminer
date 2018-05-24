@@ -41,6 +41,11 @@ namespace merit
 
                 Client();
                 ~Client();
+
+                void set_agent(
+                        const std::string& software,
+                        const std::string& version);
+
                 bool connect(
                         const std::string& url, 
                         const std::string& user, 
@@ -62,7 +67,7 @@ namespace merit
                 bool mining_difficulty(const pt::ptree& params);
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
-                bool client_show_message(const pt::ptree& params);
+                bool client_show_message(const pt::ptree& params, const pt::ptree& id);
 
             private:
                 enum State {
@@ -73,13 +78,16 @@ namespace merit
                     Method,
                 } _state;
 
+                std::string _agent;
                 std::string _url;
                 std::string _user;
                 std::string _pass;
                 std::string _session_id;
+                std::string _host;
+                std::string _port;
                 bytes _sockbuf;
 
-                double _next_diff;
+                std::atomic<double> _next_diff;
                 std::mutex _sock_mutex;
                 std::mutex _work_mutex;
 

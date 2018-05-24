@@ -5,6 +5,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <boost/log/trivial.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -28,6 +29,7 @@ namespace merit
 
         Client::Client() :
             _state{Disconnected},
+            _agent{USER_AGENT},
             _socket{_service}
         {
         }
@@ -35,6 +37,13 @@ namespace merit
         Client::~Client() 
         {
             disconnect();
+        }
+
+        void Client::set_agent(
+                const std::string& software,
+                const std::string& version)
+        {
+            _agent = software + "/" + version;
         }
 
         bool Client::connect(
@@ -52,14 +61,14 @@ namespace merit
 
             auto host_pos = _url.find("://") + 3; 
             auto port_pos = _url.find(":", 14) + 1;
-            auto host = _url.substr(host_pos, port_pos - host_pos - 1);
-            auto port = _url.substr(port_pos);
+            _host = _url.substr(host_pos, port_pos - host_pos - 1);
+            _port = _url.substr(port_pos);
 
-            BOOST_LOG_TRIVIAL(info) << "HOST: " << host;
-            BOOST_LOG_TRIVIAL(info) << "PORT: " << port;
+            BOOST_LOG_TRIVIAL(info) << "host: " << _host;
+            BOOST_LOG_TRIVIAL(info) << "port: " << _port;
 
             asio::ip::tcp::resolver resolver{_service};
-            asio::ip::tcp::resolver::query query{host, port};
+            asio::ip::tcp::resolver::query query{_host, _port};
             auto endpoints = resolver.resolve(query);
 
             boost::asio::connect(_socket, endpoints);
@@ -70,6 +79,7 @@ namespace merit
         {
             std::lock_guard<std::mutex> guard{_sock_mutex};
             _socket.close();
+            _state = Disconnected;
         }
 
         bool parse_json(const std::string& s, pt::ptree& r)
@@ -130,7 +140,6 @@ namespace merit
         {
             auto v = params.begin();
 
-
             auto job_id = v->second.get_value_optional<std::string>(); v++;
             if(!job_id) { return false; }
 
@@ -187,7 +196,6 @@ namespace merit
 
             _job.id = *job_id;
 
-            //TODO fill merkle tree
             _job.merkle.clear();
             for(const auto& hex : merkle_array) {
                 std::string s = hex.second.get_value<std::string>();
@@ -201,27 +209,70 @@ namespace merit
 
             _job.diff = _next_diff;
             _job.clean = *is_clean;
+            BOOST_LOG_TRIVIAL(info) << "notify: " << _job.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << _job.nedgebits << " prevhash: " << *prevhash;
+
 
             return true;
         }
 
         bool Client::mining_difficulty(const pt::ptree& params)
         {
+            auto v = params.begin();
+            auto diff = v->second.get_value_optional<double>();
+            if(!diff || *diff == 0) {
+                return false;
+            }
+
+            _next_diff = *diff;
+            BOOST_LOG_TRIVIAL(info) << "difficulty: " << *diff;
             return true;
         }
 
         bool Client::client_reconnect(const pt::ptree& params)
         {
+            auto v = params.begin();
+            auto host = v->second.get_value_optional<std::string>(); v++;
+            if(!host) {
+                return false;
+            }
+
+            auto port_string = v->second.get_value_optional<std::string>();
+
+            if(port_string) {
+                _port = *port_string;
+            } else {
+                auto port_int = v->second.get_value_optional<int>();
+                if(!port_int) {
+                    return false;
+                }
+                _port = boost::lexical_cast<std::string>(*port_int);
+            }
+
+            disconnect();
             return true;
         }
 
-        bool Client::client_get_version(const pt::ptree& params)
+        bool Client::client_get_version(const pt::ptree& id)
         {
-            return true;
+            pt::ptree req;
+            pt::ptree err;
+            req.put_child("id", id);
+            req.put_child("error", err);
+            req.put("result", _agent);
+
+            std::stringstream s;
+            pt::write_json(s, req, false);
+            return send(s.str());
         }
 
-        bool Client::client_show_message(const pt::ptree& params)
+        bool Client::client_show_message(const pt::ptree& params, const pt::ptree& id)
         {
+            auto v = params.begin();
+            auto msg = v->second.get_value_optional<std::string>(); v++;
+            if(msg) {
+                BOOST_LOG_TRIVIAL(info) << "message: " << *msg;
+            }
+
             return true;
         }
 
@@ -233,6 +284,7 @@ namespace merit
                 return false;
             }
 
+            auto id = val.get_child_optional("id");
             auto method = val.get_optional<std::string>("method");
             if(!method) {
                 return true;
@@ -249,7 +301,7 @@ namespace merit
                     BOOST_LOG_TRIVIAL(error) << "unable to set mining.notify";
                     return false;
                 }
-            } else if(*method == "mining.difficulty") {
+            } else if(*method == "mining.set_difficulty") {
                 if(!mining_difficulty(*params)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to set mining.difficulty";
                     return false;
@@ -260,12 +312,14 @@ namespace merit
                     return false;
                 }
             } else if(*method == "client.get_version") {
-                if(!client_get_version(*params)) {
+                if(!id || !client_get_version(*id)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to execute client.get_version";
                     return false;
                 }
             } else if(*method == "client.show_message") {
-                if(!client_show_message(*params)) {
+                if(!id) { return true; }
+
+                if(!client_show_message(*params, *id)) {
                     BOOST_LOG_TRIVIAL(error) << "unable to execute client.show_message";
                     return false;
                 }
@@ -296,8 +350,6 @@ namespace merit
                     BOOST_LOG_TRIVIAL(error) << "error receiving";
                     return false;
                 }
-                BOOST_LOG_TRIVIAL(debug) << res;
-
                 if(!handle_command(res)) {
                     break;
                 }
@@ -314,9 +366,9 @@ namespace merit
         {
             std::stringstream req;
             if (!_session_id.empty()) {
-                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT << "\", \"" << _session_id << "\"]}";
+                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << _agent << "\", \"" << _session_id << "\"]}";
             } else {
-                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT << "\"]}";
+                req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << _agent << "\"]}";
             }
 
             if (!send(req.str())) {
@@ -360,8 +412,6 @@ namespace merit
                 return false;
             }
 
-            BOOST_LOG_TRIVIAL(info) << "session id: " << _session_id;
-
             auto res = result->begin();
             res++;
 
@@ -370,8 +420,6 @@ namespace merit
                 BOOST_LOG_TRIVIAL(error) << "invalid extranonce";
                 return false;
             }
-
-            BOOST_LOG_TRIVIAL(info) << "xnonce1: " << *xnonce1;
 
             res++;
             auto xnonce2_size = res->second.get_value_optional<int>();
@@ -382,8 +430,6 @@ namespace merit
 
             _xnonce2_size = *xnonce2_size;
 
-            BOOST_LOG_TRIVIAL(info) << "xnonce2 size: " << *xnonce2_size;
-
             if (_xnonce2_size < 0 || _xnonce2_size > 100) {
                 BOOST_LOG_TRIVIAL(error) << "invalid extranonce2 size";
                 return false;
@@ -393,7 +439,6 @@ namespace merit
                 BOOST_LOG_TRIVIAL(error) << "error parsing extranonce1";
             }
             _next_diff = 1.0;
-            BOOST_LOG_TRIVIAL(info) << "nextdiff: " << _next_diff;
 
             return true;
 
@@ -401,7 +446,6 @@ namespace merit
 
         bool Client::send(const std::string& message)
         {
-            BOOST_LOG_TRIVIAL(debug) << "SEND: " << message;
             std::lock_guard<std::mutex> guard{_sock_mutex};
             boost::system::error_code error;
             asio::write(_socket, boost::asio::buffer(message), error);
@@ -452,7 +496,6 @@ namespace merit
                 _sockbuf.clear();
             }
 
-            BOOST_LOG_TRIVIAL(debug) << "RECV: " << message;
             return true;
         }
     }
