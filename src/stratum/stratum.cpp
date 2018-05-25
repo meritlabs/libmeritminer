@@ -186,13 +186,10 @@ namespace merit
             if(!parse_hex(*coinbase1, _job.coinbase)) { return false; } 
             _job.coinbase.insert(_job.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
 
-            const auto xnonce2_start = _job.coinbase.size();
+            _job.xnonce2_start = _job.coinbase.size();
 
             _job.coinbase.insert(_job.coinbase.end(), _xnonce2_size, 0);
             if(!parse_hex(*coinbase2, _job.coinbase)) { return false; } 
-
-            _job.xnonce2 = _job.coinbase.begin();
-            std::advance(_job.xnonce2, xnonce2_start);
 
             _job.id = *job_id;
 

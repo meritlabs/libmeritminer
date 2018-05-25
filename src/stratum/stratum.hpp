@@ -25,7 +25,7 @@ namespace merit
             util::ubytes prevhash;
             util::ubytes coinbase;
             size_t coinbase1_size;
-            util::ubytes::iterator xnonce2;
+            size_t xnonce2_start;
             std::vector<util::ubytes> merkle;
             util::ubytes version;
             util::ubytes nbits;
