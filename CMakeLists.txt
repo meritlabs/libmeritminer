@@ -17,13 +17,17 @@ INCLUDE_DIRECTORIES(src/crypto)
 INCLUDE_DIRECTORIES(src/cuckoo)
 INCLUDE_DIRECTORIES(src/blake2)
 INCLUDE_DIRECTORIES(src/stratum)
+INCLUDE_DIRECTORIES(src/miner)
+INCLUDE_DIRECTORIES(src/util)
 
 ADD_LIBRARY(meritminer SHARED 
-    src/miner.cpp
+    src/public.cpp
     src/cuckoo/miner.cpp
     src/cuckoo/mean_cuckoo.cpp
     src/blake2/blake2b-ref.c
-    src/stratum/stratum.cpp)
+    src/stratum/stratum.cpp
+    src/miner/miner.cpp
+    src/util/util.cpp)
 
 ADD_EXECUTABLE(meritminertest src/test.cpp)
 TARGET_LINK_LIBRARIES(meritminertest meritminer ${Boost_LIBRARIES})
