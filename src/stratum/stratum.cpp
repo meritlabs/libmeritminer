@@ -1,4 +1,4 @@
-#include "stratum.hpp"
+#include "stratum/stratum.hpp"
 
 #include <chrono>
 #include <boost/property_tree/ptree.hpp>
@@ -199,7 +199,7 @@ namespace merit
             _job.merkle.clear();
             for(const auto& hex : merkle_array) {
                 std::string s = hex.second.get_value<std::string>();
-                ubytes bin;
+                util::ubytes bin;
                 if(!parse_hex(s, bin)) {
                     return false;
                 }
@@ -452,7 +452,7 @@ namespace merit
             return !error;
         }
 
-        bool has_line_ending(const bytes& b)
+        bool has_line_ending(const util::bytes& b)
         {
             return std::find(b.begin(), b.end(), '\n') != b.end();
         }
@@ -464,7 +464,7 @@ namespace merit
 
                 std::chrono::duration<double> duration;
                 do {
-                    bytes s(BUFFER_SIZE, 0);
+                    util::bytes s(BUFFER_SIZE, 0);
                     boost::system::error_code error;
                     auto len = _socket.read_some(asio::buffer(s), error);
                     if(error && error != boost::asio::error::eof) {

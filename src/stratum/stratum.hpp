@@ -11,6 +11,8 @@
 #include <thread>
 #include <atomic>
 
+#include "util/util.hpp"
+
 namespace pt = boost::property_tree;
 namespace asio = boost::asio;
 
@@ -18,20 +20,17 @@ namespace merit
 {
     namespace stratum
     {
-        using ubytes = std::vector<unsigned char>;
-        using bytes = std::vector<char>;
-
         struct Job {
             std::string id;
-            ubytes prevhash;
-            ubytes coinbase;
+            util::ubytes prevhash;
+            util::ubytes coinbase;
             size_t coinbase1_size;
-            ubytes::iterator xnonce2;
-            std::vector<ubytes> merkle;
-            ubytes version;
-            ubytes nbits;
+            util::ubytes::iterator xnonce2;
+            std::vector<util::ubytes> merkle;
+            util::ubytes version;
+            util::ubytes nbits;
             int nedgebits;
-            ubytes time;
+            util::ubytes time;
             bool clean = false;
             double diff = 0.0;
         };
@@ -85,7 +84,7 @@ namespace merit
                 std::string _session_id;
                 std::string _host;
                 std::string _port;
-                bytes _sockbuf;
+                util::bytes _sockbuf;
 
                 std::atomic<double> _next_diff;
                 std::mutex _sock_mutex;

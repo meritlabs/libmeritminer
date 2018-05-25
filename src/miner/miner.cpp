@@ -1,4 +1,4 @@
-#include "miner.hpp"
+#include "miner/miner.hpp"
 
 namespace merit
 {
