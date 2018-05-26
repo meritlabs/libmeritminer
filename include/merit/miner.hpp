@@ -6,12 +6,22 @@
 namespace merit
 {
     void test();
+    struct Context;
+
+    Context* create_context();
+    void delete_context(Context*);
+
     bool connect_stratum(
-            const std::string& url,
-            const std::string& user,
-            const std::string& pass);
+            Context* c,
+            const char* url,
+            const char* user,
+            const char* pass);
+
     void init_logging();
-    void run_stratum();
-    void stop_stratum();
+    void run_stratum(Context*);
+    void stop_stratum(Context*);
+
+    void run_miner(Context*, int workers, int threads_per_worker);
+    void stop_miner(Context*);
 }
 #endif //MERITMINER_H

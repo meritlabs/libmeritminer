@@ -45,8 +45,7 @@ namespace merit
                 Miner(
                         int workers,
                         int threads_per_worker,
-                        util::SubmitWorkFunc submit_work,
-                        ctpl::thread_pool&);
+                        util::SubmitWorkFunc submit_work);
 
             public:
                 void submit_job(const stratum::Job&);
@@ -58,9 +57,10 @@ namespace merit
                 util::MaybeWork next_work() const;
 
                 int total_workers() const;
+                bool running() const;
 
             private:
-                ctpl::thread_pool& _pool;
+                ctpl::thread_pool _pool;
                 util::MaybeWork _next_work;
                 util::SubmitWorkFunc _submit_work;
                 std::atomic<bool> _running;

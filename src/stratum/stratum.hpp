@@ -36,6 +36,8 @@ namespace merit
             double diff = 0.0;
         };
 
+        using MaybeJob = boost::optional<Job>;
+
         struct Client {
             public:
 
@@ -56,6 +58,10 @@ namespace merit
                 bool authorize();
                 bool run();
                 void stop();
+
+                MaybeJob get_job();
+
+                void submit_work(const util::Work&);
 
             private:
                 bool send(const std::string&);
@@ -88,13 +94,13 @@ namespace merit
                 util::bytes _sockbuf;
 
                 std::atomic<double> _next_diff;
-                std::mutex _sock_mutex;
-                std::mutex _work_mutex;
+                mutable std::mutex _sock_mutex;
+                mutable std::mutex _job_mutex;
 
                 std::vector<unsigned char> _xnonce1;
                 size_t _xnonce2_size;
                 Job _job;
-                pthread_mutex_t _work_lock;
+                bool _new_job;
                 asio::io_service _service;
                 asio::ip::tcp::socket _socket;
                 std::atomic<bool> _running;

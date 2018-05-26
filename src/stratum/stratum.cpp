@@ -34,7 +34,8 @@ namespace merit
         Client::Client() :
             _state{Disconnected},
             _agent{USER_AGENT},
-            _socket{_service}
+            _socket{_service},
+            _new_job{false}
         {
         }
 
@@ -163,6 +164,7 @@ namespace merit
             if(nbits->size() != 8) { return false; }
             if(time->size() != 8) { return false; }
 
+            std::lock_guard<std::mutex> guard{_job_mutex};
             if(!util::parse_hex(*prevhash, _job.prevhash)) { return false;}
             if(!util::parse_hex(*version, _job.version)) { return false;}
             if(!util::parse_hex(*nbits, _job.nbits)) { return false;}
@@ -195,6 +197,7 @@ namespace merit
 
             _job.diff = _next_diff;
             _job.clean = *is_clean;
+            _new_job = true;
             BOOST_LOG_TRIVIAL(info) << "notify: " << _job.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << _job.nedgebits << " prevhash: " << *prevhash;
 
 
@@ -346,6 +349,23 @@ namespace merit
         void Client::stop()
         {
             _running = false;
+        }
+
+        MaybeJob Client::get_job()
+        {
+            std::lock_guard<std::mutex> guard{_job_mutex};
+
+            if(!_new_job) {
+                return MaybeJob{};
+            }
+
+            _new_job = false;
+            return _job;
+        }
+
+        void Client::submit_work(const util::Work&)
+        {
+            BOOST_LOG_TRIVIAL(info) << "Got Work!";
         }
 
         bool Client::subscribe()

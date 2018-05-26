@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <cstdint>
+#include <boost/algorithm/hex.hpp>
 
 #ifdef HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
@@ -60,25 +61,20 @@ namespace merit
 
         template<class C>
         bool parse_hex(const std::string& s, C& res)
+        try
         {
-            std::stringstream tobin;
-            for(int i = 0; i < s.size(); i+=2) {
-                unsigned char byte;
-                tobin << std::hex << s[i] << s[i+1];
-                tobin >> byte;
-                res.push_back( byte );
-            }
+            boost::algorithm::unhex(s.begin(), s.end(), std::back_inserter(res));
             return true;
+        }
+        catch(...)
+        {
+            return false;
         }
 
         template<class C>
         void to_hex(const C& bin, std::string& res)
         {
-            std::stringstream tohex;
-            for(const auto& b : bin) {
-                tohex << std::hex << b;
-            }
-            res = tohex.str();
+            boost::algorithm::hex_lower(bin.begin(), bin.end(), std::back_inserter(res));
         }
 
     }

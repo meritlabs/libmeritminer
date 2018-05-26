@@ -18,10 +18,9 @@ namespace merit
         Miner::Miner(
                 int workers,
                 int threads_per_worker,
-                util::SubmitWorkFunc submit_work,
-                ctpl::thread_pool& pool) :
+                util::SubmitWorkFunc submit_work) :
             _submit_work{submit_work},
-            _pool{pool}
+            _pool{(workers * threads_per_worker) + workers}
         {
             assert(workers >= 1);
             assert(threads_per_worker >= 1);
@@ -49,21 +48,19 @@ namespace merit
 
         void Miner::run()
         {
+            BOOST_LOG_TRIVIAL(info) << "starting workers...";
             assert(!_running);
             using namespace std::chrono_literals;
             _running = true;
 
-            BOOST_LOG_TRIVIAL(info) << "starting workers...";
             std::vector<std::future<void>> jobs;
             for(auto& worker : _workers) {
-                _pool.push([&worker](int id){ worker.run(); });
+                jobs.push_back(_pool.push([&worker](int id){ worker.run(); }));
             }
 
-            BOOST_LOG_TRIVIAL(info) << "started workers.";
             for(auto& j: jobs) { j.get();}
 
             BOOST_LOG_TRIVIAL(info) << "stopped workers.";
-
         }
 
         void Miner::stop()
@@ -82,6 +79,11 @@ namespace merit
         int Miner::total_workers() const 
         {
             return _workers.size();
+        }
+
+        bool Miner::running() const 
+        {
+            return _running;
         }
 
         Worker::Worker(
@@ -128,19 +130,22 @@ namespace merit
 
         void Worker::run()
         {
+            BOOST_LOG_TRIVIAL(info) << "started worker: " << _id;
             using namespace std::chrono_literals;
             _running = true;
             util::Work prev_work;
-            uint32_t n = 0; 
+            uint32_t n =  0xffffffffU / _miner.total_workers() * _id;
+            uint32_t end_nonce = 0xffffffffU / _miner.total_workers() * (_id + 1) - 0x20;
 
             while(_running)
             {
                 auto work = _miner.next_work();
 
                 if(!work) {
+                    std::this_thread::sleep_for(10ms);
                     continue;
-                    std::this_thread::sleep_for(100ms);
                 }
+
 
                 if(std::equal(
                             prev_work.data.begin(),
@@ -148,9 +153,14 @@ namespace merit
                             work->data.begin())) {
                     work->data[19] = ++n;
                 } else {
-                    n = 0xffffffffU / _miner.total_workers() * _id;
+                    BOOST_LOG_TRIVIAL(info) << "(" << _id << ") got work: " << work->jobid;
+                    n =  0xffffffffU / _miner.total_workers() * _id;
                     work->data[19] = n;
                     prev_work = *work;
+                }
+
+                if(n > end_nonce) {
+                    continue;
                 }
 
                 assert(work->data.size() > 16);
@@ -169,13 +179,13 @@ namespace merit
 
                 uint8_t edgebits = work->data[20] >> 24;
 
-                auto found =  cuckoo::FindCycle(
+                bool found = cuckoo::FindCycle(
                         hex_header_hash.data(),
                         hex_header_hash.size(),
                         edgebits,
                         CUCKOO_PROOF_SIZE,
                         cycle,
-                        _id,
+                        _threads,
                         _pool);
 
                 if(found) {
@@ -185,6 +195,10 @@ namespace merit
                             reinterpret_cast<unsigned char*>(cycle_hash.data()),
                             reinterpret_cast<const unsigned char*>(work->cycle.begin()),
                             sizeof(uint32_t) * work->cycle.size());
+
+                    std::string cycle_hash_hex;
+                    util::to_hex(cycle_hash, cycle_hash_hex);
+                    BOOST_LOG_TRIVIAL(info) << "(" << _id << ") found cycle: " << cycle_hash_hex;
                     if(target_test(cycle_hash, work->target)) {
                         _miner.submit_work(*work);
                     }
