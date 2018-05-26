@@ -125,21 +125,6 @@ namespace merit
             return false;
         }
 
-        template<class C>
-        bool parse_hex(const std::string& s, C& res)
-        {
-            std::stringstream tobin;
-            std::istringstream ss(s);
-            for(int i = 0; i < s.size(); i+=2)
-            {
-                unsigned char byte;
-                tobin << std::hex << s[i] << s;
-                tobin >> byte;
-                res.push_back( byte );
-            }
-            return true;
-        }
-
         bool Client::mining_notify(const pt::ptree& params)
         {
             auto v = params.begin();
@@ -178,22 +163,22 @@ namespace merit
             if(nbits->size() != 8) { return false; }
             if(time->size() != 8) { return false; }
 
-            if(!parse_hex(*prevhash, _job.prevhash)) { return false;}
-            if(!parse_hex(*version, _job.version)) { return false;}
-            if(!parse_hex(*nbits, _job.nbits)) { return false;}
-            if(!parse_hex(*time, _job.time)) { return false;}
+            if(!util::parse_hex(*prevhash, _job.prevhash)) { return false;}
+            if(!util::parse_hex(*version, _job.version)) { return false;}
+            if(!util::parse_hex(*nbits, _job.nbits)) { return false;}
+            if(!util::parse_hex(*time, _job.time)) { return false;}
 
             _job.nedgebits = *edgebits;
 
             _job.coinbase1_size = coinbase1->size()/2;
 
-            if(!parse_hex(*coinbase1, _job.coinbase)) { return false; } 
+            if(!util::parse_hex(*coinbase1, _job.coinbase)) { return false; } 
             _job.coinbase.insert(_job.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
 
             _job.xnonce2_start = _job.coinbase.size();
 
             _job.coinbase.insert(_job.coinbase.end(), _xnonce2_size, 0);
-            if(!parse_hex(*coinbase2, _job.coinbase)) { return false; } 
+            if(!util::parse_hex(*coinbase2, _job.coinbase)) { return false; } 
 
             _job.id = *job_id;
 
@@ -201,7 +186,7 @@ namespace merit
             for(const auto& hex : merkle_array) {
                 std::string s = hex.second.get_value<std::string>();
                 util::ubytes bin;
-                if(!parse_hex(s, bin)) {
+                if(!util::parse_hex(s, bin)) {
                     return false;
                 }
 
@@ -436,7 +421,7 @@ namespace merit
                 return false;
             }
 
-            if(!parse_hex(*xnonce1, _xnonce1)) {
+            if(!util::parse_hex(*xnonce1, _xnonce1)) {
                 BOOST_LOG_TRIVIAL(error) << "error parsing extranonce1";
             }
             _next_diff = 1.0;

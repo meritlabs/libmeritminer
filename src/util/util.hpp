@@ -2,6 +2,8 @@
 #define MERIT_MINER_UTIL_H
 
 #include <vector>
+#include <string>
+#include <sstream>
 #include <cstdint>
 
 #ifdef HAVE_SYS_ENDIAN_H
@@ -55,6 +57,30 @@ namespace merit
     {
         using ubytes = std::vector<unsigned char>;
         using bytes = std::vector<char>;
+
+        template<class C>
+        bool parse_hex(const std::string& s, C& res)
+        {
+            std::stringstream tobin;
+            for(int i = 0; i < s.size(); i+=2) {
+                unsigned char byte;
+                tobin << std::hex << s[i] << s[i+1];
+                tobin >> byte;
+                res.push_back( byte );
+            }
+            return true;
+        }
+
+        template<class C>
+        void to_hex(const C& bin, std::string& res)
+        {
+            std::stringstream tohex;
+            for(const auto& b : bin) {
+                tohex << std::hex << b;
+            }
+            res = tohex.str();
+        }
+
     }
 }
 #endif

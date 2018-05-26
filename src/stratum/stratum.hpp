@@ -100,16 +100,8 @@ namespace merit
                 std::atomic<bool> _running;
         };
 
-        bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);
-        bool stratum_send_line(struct stratum_ctx *sctx, char *s);
-        char *stratum_recv_line(struct stratum_ctx *sctx);
-        bool stratum_connect(struct stratum_ctx *sctx, const char *url);
-        void stratum_disconnect(struct stratum_ctx *sctx);
-        bool stratum_subscribe(struct stratum_ctx *sctx);
-        bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *pass);
-        bool stratum_handle_method(struct stratum_ctx *sctx, const char *s);
+        util::Work work_from_job(const stratum::Job&); 
     }
 
-    util::Work work_from_job(const stratum::Job&); 
 }
 #endif

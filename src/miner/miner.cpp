@@ -1,32 +1,202 @@
 #include "miner/miner.hpp"
+#include "cuckoo/mean_cuckoo.h"
+#include <crypto++/sha.h>
+#include <boost/log/trivial.hpp>
+
+#include<chrono>
+#include<set>
 
 namespace merit
 {
     namespace miner
     {
-        Miner::Miner(
-                int wokers,
-                int threads_per_worker,
-                util::SubmitWorkFunc submit_work) :
-            _submit_work{submit_work}
+        namespace 
         {
-
+            const int CUCKOO_PROOF_SIZE = 42;
         }
 
-        void Miner::submit_job(const stratum::Job&)
+        Miner::Miner(
+                int workers,
+                int threads_per_worker,
+                util::SubmitWorkFunc submit_work,
+                ctpl::thread_pool& pool) :
+            _submit_work{submit_work},
+            _pool{pool}
         {
+            assert(workers >= 1);
+            assert(threads_per_worker >= 1);
 
+            _running = false;
+            BOOST_LOG_TRIVIAL(info) << "workers: " << workers;
+            BOOST_LOG_TRIVIAL(info) << "threads per worker: " << threads_per_worker;
+
+            for(int i = 0; i < workers; i++) {
+                _workers.emplace_back(i, threads_per_worker, _pool, *this);
+            }
+        }
+
+        void Miner::submit_job(const stratum::Job& j)
+        {
+            auto w = stratum::work_from_job(j);
+            std::lock_guard<std::mutex> guard{_work_mutex};
+            _next_work = w;
+        }
+
+        void Miner::submit_work(const util::Work& w)
+        {
+            _submit_work(w);
         }
 
         void Miner::run()
         {
+            assert(!_running);
+            using namespace std::chrono_literals;
+            _running = true;
+
+            BOOST_LOG_TRIVIAL(info) << "starting workers...";
+            std::vector<std::future<void>> jobs;
+            for(auto& worker : _workers) {
+                _pool.push([&worker](int id){ worker.run(); });
+            }
+
+            BOOST_LOG_TRIVIAL(info) << "started workers.";
+            for(auto& j: jobs) { j.get();}
+
+            BOOST_LOG_TRIVIAL(info) << "stopped workers.";
 
         }
 
         void Miner::stop()
         {
-
+            BOOST_LOG_TRIVIAL(info) << "stopping workers...";
+            _running = false;
+            for(auto& w: _workers) { w.stop(); } 
         }
 
+        util::MaybeWork Miner::next_work() const
+        {
+            std::lock_guard<std::mutex> guard{_work_mutex};
+            return _next_work;
+        }
+
+        int Miner::total_workers() const 
+        {
+            return _workers.size();
+        }
+
+        Worker::Worker(
+                int id,
+                int threads,
+                ctpl::thread_pool& pool,
+                Miner& miner) :
+            _id{id},
+            _threads{threads},
+            _pool{pool},
+            _miner{miner}
+        {
+            _running = false;
+        }
+
+        Worker::Worker(const Worker& o) :
+            _id{o._id},
+            _threads{o._threads},
+            _pool{o._pool},
+            _miner{o._miner}
+        {
+            _running = o._running ? true : false;
+        }
+
+        int Worker::id()
+        {
+            return _id;
+        }
+
+        bool target_test(
+                const std::array<uint32_t, 8>& hash, 
+                const std::array<uint32_t, 8>& target)
+        {
+            for (int i = 7; i >= 0; i--) {
+                if (hash[i] > target[i]) {
+                    return false;
+                }
+                if (hash[i] < target[i]) {
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        void Worker::run()
+        {
+            using namespace std::chrono_literals;
+            _running = true;
+            util::Work prev_work;
+            uint32_t n = 0; 
+
+            while(_running)
+            {
+                auto work = _miner.next_work();
+
+                if(!work) {
+                    continue;
+                    std::this_thread::sleep_for(100ms);
+                }
+
+                if(std::equal(
+                            prev_work.data.begin(),
+                            prev_work.data.begin()+19,
+                            work->data.begin())) {
+                    work->data[19] = ++n;
+                } else {
+                    n = 0xffffffffU / _miner.total_workers() * _id;
+                    work->data[19] = n;
+                    prev_work = *work;
+                }
+
+                assert(work->data.size() > 16);
+
+                std::array<unsigned char, 32> hash;
+                CryptoPP::SHA256{}.CalculateDigest(
+                        hash.data(),
+                        reinterpret_cast<const unsigned char*>(work->data.data()),
+                        sizeof(unsigned int) * work->data.size());
+
+                uint8_t proofsize = 42;
+                std::set<uint32_t> cycle;
+
+                std::string hex_header_hash;
+                util::to_hex(hash, hex_header_hash);
+
+                uint8_t edgebits = work->data[20] >> 24;
+
+                auto found =  cuckoo::FindCycle(
+                        hex_header_hash.data(),
+                        hex_header_hash.size(),
+                        edgebits,
+                        CUCKOO_PROOF_SIZE,
+                        cycle,
+                        _id,
+                        _pool);
+
+                if(found) {
+                    std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
+                    std::array<uint32_t, 8> cycle_hash;
+                    CryptoPP::SHA256{}.CalculateDigest(
+                            reinterpret_cast<unsigned char*>(cycle_hash.data()),
+                            reinterpret_cast<const unsigned char*>(work->cycle.begin()),
+                            sizeof(uint32_t) * work->cycle.size());
+                    if(target_test(cycle_hash, work->target)) {
+                        _miner.submit_work(*work);
+                    }
+                }
+
+            }
+        }
+
+        void Worker::stop()
+        {
+            _running = false;
+
+        }
     }
 }
