@@ -12,6 +12,7 @@
 #include <atomic>
 
 #include "util/util.hpp"
+#include "util/work.hpp"
 
 namespace pt = boost::property_tree;
 namespace asio = boost::asio;
@@ -108,5 +109,7 @@ namespace merit
         bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *pass);
         bool stratum_handle_method(struct stratum_ctx *sctx, const char *s);
     }
+
+    util::Work work_from_job(const stratum::Job&); 
 }
 #endif

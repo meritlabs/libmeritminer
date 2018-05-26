@@ -2,30 +2,45 @@
 #define MERIT_MINER_MINER_H
 
 #include <array>
+#include <atomic>
+#include <thread>
 #include "util/util.hpp"
 #include "stratum/stratum.hpp"
+
+#include <boost/optional.hpp>
 
 namespace merit
 {
     namespace miner
     {
-        struct Work
+
+        class Worker
         {
-            std::string jobid;
-            std::array<uint32_t, 32> data;
-            std::array<uint32_t, 8> target;
-            std::array<uint32_t, 42> cycle;
-
-            int height;
-            std::string txs;
-            std::string invites;
-            std::string referrals;
-            std::string workid;
-
-            util::ubytes xnonce2;
+            public:
         };
 
-        Work work_from_job(const stratum::Job&); 
+        using MaybeStratumJob = boost::optional<stratum::Job>;
+
+        class Miner
+        {
+            public:
+                Miner(
+                        int wokers,
+                        int threads_per_worker,
+                        util::SubmitWorkFunc submit_work);
+
+            public:
+                void submit_job(const stratum::Job&);
+                void run();
+                void stop();
+                
+
+            private:
+
+                MaybeStratumJob _next_stratum_job;
+                util::SubmitWorkFunc _submit_work;
+        };
+
     }
 }
 #endif
