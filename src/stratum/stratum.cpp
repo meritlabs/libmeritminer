@@ -11,8 +11,6 @@
 #include <sstream>
 #include <iterator>
 
-#include <crypto++/sha.h>
-
 
 namespace pt = boost::property_tree;
 
@@ -165,26 +163,28 @@ namespace merit
             if(time->size() != 8) { return false; }
 
             std::lock_guard<std::mutex> guard{_job_mutex};
-            if(!util::parse_hex(*prevhash, _job.prevhash)) { return false;}
-            if(!util::parse_hex(*version, _job.version)) { return false;}
-            if(!util::parse_hex(*nbits, _job.nbits)) { return false;}
-            if(!util::parse_hex(*time, _job.time)) { return false;}
+            Job j;
 
-            _job.nedgebits = *edgebits;
+            if(!util::parse_hex(*prevhash, j.prevhash)) { return false;}
+            if(!util::parse_hex(*version, j.version)) { return false;}
+            if(!util::parse_hex(*nbits, j.nbits)) { return false;}
+            if(!util::parse_hex(*time, j.time)) { return false;}
 
-            _job.coinbase1_size = coinbase1->size()/2;
+            j.nedgebits = *edgebits;
 
-            if(!util::parse_hex(*coinbase1, _job.coinbase)) { return false; } 
-            _job.coinbase.insert(_job.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
+            j.coinbase1_size = coinbase1->size()/2;
 
-            _job.xnonce2_start = _job.coinbase.size();
+            if(!util::parse_hex(*coinbase1, j.coinbase)) { return false; } 
+            j.coinbase.insert(j.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
 
-            _job.coinbase.insert(_job.coinbase.end(), _xnonce2_size, 0);
-            if(!util::parse_hex(*coinbase2, _job.coinbase)) { return false; } 
+            j.xnonce2_start = j.coinbase.size();
+            j.xnonce2_size = _xnonce2_size;
 
-            _job.id = *job_id;
+            j.coinbase.insert(j.coinbase.end(), _xnonce2_size, 0);
+            if(!util::parse_hex(*coinbase2, j.coinbase)) { return false; } 
 
-            _job.merkle.clear();
+            j.id = *job_id;
+
             for(const auto& hex : merkle_array) {
                 std::string s = hex.second.get_value<std::string>();
                 util::ubytes bin;
@@ -192,14 +192,15 @@ namespace merit
                     return false;
                 }
 
-                _job.merkle.push_back(bin);
+                j.merkle.push_back(bin);
             }
 
-            _job.diff = _next_diff;
-            _job.clean = *is_clean;
+            j.diff = _next_diff;
+            j.clean = *is_clean;
             _new_job = true;
-            BOOST_LOG_TRIVIAL(info) << "notify: " << _job.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << _job.nedgebits << " prevhash: " << *prevhash;
+            BOOST_LOG_TRIVIAL(info) << "notify: " << j.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << j.nedgebits << " prevhash: " << *prevhash;
 
+            _job = j;
 
             return true;
         }
@@ -363,9 +364,48 @@ namespace merit
             return _job;
         }
 
-        void Client::submit_work(const util::Work&)
+        void Client::submit_work(const util::Work& w)
         {
-            BOOST_LOG_TRIVIAL(info) << "Got Work!";
+            std::string xnonce2_hex;
+            util::to_hex(w.xnonce2, xnonce2_hex);
+
+            uint32_t ntime;
+            le32enc(&ntime, w.data[17]);
+
+            uint32_t nonce;
+            le32enc(&nonce, w.data[19]);
+
+            std::string ntime_hex;
+            util::to_hex(
+                    reinterpret_cast<const unsigned char*>(&ntime), 
+                    reinterpret_cast<const unsigned char*>(&ntime)+4,
+                    ntime_hex);
+
+            std::string nonce_hex;
+            util::to_hex(
+                    reinterpret_cast<const unsigned char*>(&nonce),
+                    reinterpret_cast<const unsigned char*>(&nonce) + 4,
+                    nonce_hex);
+            std::stringstream cycle;
+            for(int i = 0; i < w.cycle.size(); i++) { 
+                if(i > 0) { cycle << ","; }
+                cycle << std::hex << w.cycle[i];
+            }
+
+            std::stringstream req;
+            req << "{\"method\": \"mining.submit\", \"params\": ["
+                << "\"" << _user << "\"," 
+                << "\"" << w.jobid << "\","
+                << "\"" << xnonce2_hex << "\","
+                << "\"" << ntime_hex << "\","
+                << "\"" << nonce_hex << "\","
+                << "\"" << cycle.str() << "\"], \"id\":4}";
+
+            if(!send(req.str())) {
+                BOOST_LOG_TRIVIAL(error) << "Error submitting work: " << req.str();
+            } else {
+                BOOST_LOG_TRIVIAL(info) << "submitted work: " << req.str();
+            }
         }
 
         bool Client::subscribe()
@@ -507,12 +547,13 @@ namespace merit
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)
         {
-            uint64_t m;
             int k;
 
-            for (k = 7; k > 0 && diff > 1.0; k--)
+            for (k = 7; k > 0 && diff > 1.0; k--) {
                 diff /= 4294967296.0;
-            m = 4294901760.0 / diff;
+            }
+
+            uint64_t m = 4294901760.0 / diff;
 
             std::fill(target.begin(), target.end(), 0);
             target[k] = static_cast<uint32_t>(m);
@@ -525,23 +566,20 @@ namespace merit
             w.jobid = j.id;
 
             auto xnonce2 = j.coinbase.begin() + j.xnonce2_start;
-            auto xnonce2_size = std::distance(xnonce2, j.coinbase.end());
-            w.xnonce2.resize(xnonce2_size);
-            std::copy(xnonce2, j.coinbase.end(), w.xnonce2.begin());
+            auto xnonce2_end = xnonce2+j.xnonce2_size;
+            w.xnonce2.resize(j.xnonce2_size);
+            std::copy(xnonce2, xnonce2_end, w.xnonce2.begin());
 
             std::array<unsigned char, 64> merkle_root;
+            std::fill(merkle_root.begin(), merkle_root.end(), 0);
 
             //sha256 
-            CryptoPP::SHA256{}.CalculateDigest(
-                    merkle_root.data(), j.coinbase.data(), j.coinbase.size());
+            util::double_sha256(merkle_root.data(), j.coinbase.data(), j.coinbase.size());
 
             for(const auto& m : j.merkle) {
                 assert(m.size() == 32);
-                std::copy(m.begin(), m.end(), merkle_root.data() + 32);
-                CryptoPP::SHA256{}.CalculateDigest(
-                        merkle_root.data(),
-                        merkle_root.data(),
-                        merkle_root.size());
+                std::copy(m.begin(), m.end(), merkle_root.begin() + 32);
+                util::double_sha256(merkle_root.data(), merkle_root.data(), merkle_root.size());
             }
 
             //Create block header

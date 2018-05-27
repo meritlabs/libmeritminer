@@ -1,6 +1,5 @@
 #include "miner/miner.hpp"
 #include "cuckoo/mean_cuckoo.h"
-#include <crypto++/sha.h>
 #include <boost/log/trivial.hpp>
 
 #include<chrono>
@@ -166,10 +165,10 @@ namespace merit
                 assert(work->data.size() > 16);
 
                 std::array<unsigned char, 32> hash;
-                CryptoPP::SHA256{}.CalculateDigest(
+                util::double_sha256(
                         hash.data(),
                         reinterpret_cast<const unsigned char*>(work->data.data()),
-                        sizeof(unsigned int) * work->data.size());
+                        sizeof(uint32_t)*work->data.size());
 
                 uint8_t proofsize = 42;
                 std::set<uint32_t> cycle;
@@ -191,10 +190,17 @@ namespace merit
                 if(found) {
                     std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
                     std::array<uint32_t, 8> cycle_hash;
-                    CryptoPP::SHA256{}.CalculateDigest(
+                    std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;
+                    cycle_with_size[0] = CUCKOO_PROOF_SIZE;
+                    std::copy(
+                            reinterpret_cast<const uint8_t*>(work->cycle.data()),
+                            reinterpret_cast<const uint8_t*>(work->cycle.data()) + sizeof(uint32_t) * work->cycle.size(),
+                            cycle_with_size.begin()+1);
+
+                    util::double_sha256(
                             reinterpret_cast<unsigned char*>(cycle_hash.data()),
-                            reinterpret_cast<const unsigned char*>(work->cycle.begin()),
-                            sizeof(uint32_t) * work->cycle.size());
+                            cycle_with_size.data(),
+                            cycle_with_size.size());
 
                     std::string cycle_hash_hex;
                     util::to_hex(cycle_hash, cycle_hash_hex);

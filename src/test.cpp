@@ -10,7 +10,7 @@ int main(int argc, char** argv)
     merit::init_logging();
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
-    if(!merit::connect_stratum(c.get(),"stratum+tcp://testnet.pool.merit.me:3333", "max", "foo")) {
+    if(!merit::connect_stratum(c.get(),"stratum+tcp://testnet.pool.merit.me:3333", "mbKj9Pr3qY2DucGjrERCWEHjoJtcyHuL5e", "foo")) {
         std::cerr << "Error connecting" << std::endl;
         return 1;
     }

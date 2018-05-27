@@ -71,12 +71,34 @@ namespace merit
             return false;
         }
 
+        template<class I>
+        bool parse_hex_in(const std::string& s, I& it)
+        try
+        {
+            boost::algorithm::unhex(s.begin(), s.end(), it);
+            return true;
+        }
+        catch(...)
+        {
+            return false;
+        }
+
         template<class C>
         void to_hex(const C& bin, std::string& res)
         {
             boost::algorithm::hex_lower(bin.begin(), bin.end(), std::back_inserter(res));
         }
 
+        template<class I>
+        void to_hex(const I& begin, const I& end, std::string& res)
+        {
+            boost::algorithm::hex_lower(begin, end, std::back_inserter(res));
+        }
+
+        void double_sha256(
+                unsigned char* digest,
+                const unsigned char* data,
+                size_t len);
     }
 }
 #endif
