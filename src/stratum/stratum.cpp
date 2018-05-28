@@ -492,9 +492,10 @@ namespace merit
 
         bool Client::send(const std::string& message)
         {
+            auto message_with_nl = message + "\n";
             std::lock_guard<std::mutex> guard{_sock_mutex};
             boost::system::error_code error;
-            asio::write(_socket, boost::asio::buffer(message), error);
+            asio::write(_socket, boost::asio::buffer(message_with_nl), error);
             return !error;
         }
 
@@ -560,8 +561,9 @@ namespace merit
             target[k + 1] = static_cast<uint32_t>(m >> 32);
         }
 
-        util::Work work_from_job(const stratum::Job& j) 
+        util::Work work_from_job(const stratum::Job& a) 
         {
+            auto j = a;
             util::Work w;
             w.jobid = j.id;
 

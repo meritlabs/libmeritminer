@@ -3,6 +3,7 @@
 #include <boost/log/trivial.hpp>
 
 #include<chrono>
+#include<iostream>
 #include<set>
 
 namespace merit
@@ -145,12 +146,12 @@ namespace merit
                     continue;
                 }
 
-
                 if(std::equal(
                             prev_work.data.begin(),
                             prev_work.data.begin()+19,
                             work->data.begin())) {
                     work->data[19] = ++n;
+
                 } else {
                     BOOST_LOG_TRIVIAL(info) << "(" << _id << ") got work: " << work->jobid;
                     n =  0xffffffffU / _miner.total_workers() * _id;
@@ -159,22 +160,29 @@ namespace merit
                 }
 
                 if(n > end_nonce) {
+                    std::this_thread::sleep_for(10ms);
                     continue;
                 }
 
                 assert(work->data.size() > 16);
 
+                auto bwork = work->data;
+                for(int i = 0; i < bwork.size(); i++) {
+                    be32enc(&bwork[i], work->data[i]);
+                }
+
                 std::array<unsigned char, 32> hash;
                 util::double_sha256(
                         hash.data(),
-                        reinterpret_cast<const unsigned char*>(work->data.data()),
-                        sizeof(uint32_t)*work->data.size());
-
-                uint8_t proofsize = 42;
-                std::set<uint32_t> cycle;
+                        reinterpret_cast<const unsigned char*>(bwork.data()),
+                        81);
+                std::reverse(hash.begin(), hash.end());
 
                 std::string hex_header_hash;
                 util::to_hex(hash, hex_header_hash);
+
+                uint8_t proofsize = 42;
+                std::set<uint32_t> cycle;
 
                 uint8_t edgebits = work->data[20] >> 24;
 

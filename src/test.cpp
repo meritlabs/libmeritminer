@@ -15,7 +15,7 @@ int main(int argc, char** argv)
         return 1;
     }
     merit::run_stratum(c.get());
-    merit::run_miner(c.get(), 2 ,2);
+    merit::run_miner(c.get(), 1 ,1);
     while(true) { 
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(1s);
