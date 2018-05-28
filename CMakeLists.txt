@@ -24,6 +24,7 @@ include_directories(src/blake2)
 include_directories(src/stratum)
 include_directories(src/miner)
 include_directories(src/util)
+add_definitions(-DBOOST_LOG_DYN_LINK)
 
 add_library(meritminer SHARED 
     src/public.cpp
@@ -35,7 +36,7 @@ add_library(meritminer SHARED
     src/util/util.cpp)
 
 add_executable(meritminertest src/test.cpp)
-target_link_libraries(meritminertest meritminer ${Boost_LIBRARIES} cryptopp)
+target_link_libraries(meritminertest meritminer ${Boost_LIBRARIES} boost_log cryptopp)
 set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
 
 install(TARGETS meritminertest meritminer
