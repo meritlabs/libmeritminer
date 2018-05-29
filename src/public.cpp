@@ -74,32 +74,40 @@ namespace merit
     {
     }
 
-    void run_stratum(Context* c)
+    bool run_stratum(Context* c)
     {
         assert(c);
         if(c->stratum_thread.joinable()) {
             stop_stratum(c);
+            return false;
         }
 
         c->stratum_thread = std::thread([c]() {
                 c->stratum.run();
         });
+
+        return true;
     }
 
     void stop_stratum(Context* c)
     {
         assert(c);
         c->stratum.stop();
-        c->stratum_thread.join();
     }
 
-    void run_miner(Context* c, int workers, int threads_per_worker)
+    bool run_miner(Context* c, int workers, int threads_per_worker)
     {
         assert(c);
         using namespace std::chrono_literals;
 
+        if(c->mining_thread.joinable() || c->collab_thread.joinable()) {
+            stop_miner(c);
+            return false;
+        }
+
         if(c->miner && c->miner->running()) {
             stop_miner(c);
+            return false;
         }
         assert(!c->miner);
 
@@ -125,6 +133,7 @@ namespace merit
                     c->miner->submit_job(*j);
                 }
         });
+        return true;
     }
 
     void stop_miner(Context* c)
@@ -134,10 +143,21 @@ namespace merit
             return;
         }
         c->miner->stop();
-        c->mining_thread.join();
-        c->collab_thread.join();
         c->miner.reset();
     }
+
+    bool is_stratum_running(Context* c)
+    {
+        assert(c);
+        return c->stratum_thread.joinable();
+    }
+
+    bool is_miner_running(Context* c)
+    {
+        assert(c);
+        return c->mining_thread.joinable() || c->collab_thread.joinable();
+    }
+
 }
 
 

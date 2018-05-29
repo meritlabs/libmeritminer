@@ -18,10 +18,12 @@ namespace merit
             const char* pass);
 
     void init_logging();
-    void run_stratum(Context*);
+    bool run_stratum(Context*);
     void stop_stratum(Context*);
 
-    void run_miner(Context*, int workers, int threads_per_worker);
+    bool run_miner(Context*, int workers, int threads_per_worker);
     void stop_miner(Context*);
+    bool is_stratum_running(Context*);
+    bool is_miner_running(Context*);
 }
 #endif //MERITMINER_H
