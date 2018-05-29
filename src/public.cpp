@@ -196,13 +196,13 @@ namespace merit
     bool is_stratum_running(Context* c)
     {
         assert(c);
-        return c->stratum.stopping();
+        return c->stratum.running();
     }
 
     bool is_miner_running(Context* c)
     {
         assert(c);
-        return c->miner  && c->miner->stopping();
+        return c->miner && c->miner->running();
     }
 
     bool is_stratum_stopping(Context* c)
