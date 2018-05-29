@@ -46,18 +46,23 @@ namespace merit
             const char* url,
             const char* user,
             const char* pass)
+    try
     {
         assert(c);
 
+        BOOST_LOG_TRIVIAL(info) << "connecting to: " << url; 
         if(!c->stratum.connect(url, user, pass)) {
             BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << url; 
             return false;
         }
+
+        BOOST_LOG_TRIVIAL(info) << "subscribing to: " << url; 
         if(!c->stratum.subscribe()) {
             BOOST_LOG_TRIVIAL(error) << "error subscribing to stratum server: " << url; 
             return false;
         }
 
+        BOOST_LOG_TRIVIAL(info) << "authorizing as: " << user; 
         if(!c->stratum.authorize()) {
             BOOST_LOG_TRIVIAL(error) << "error authorize to stratum server: " << url; 
             return false;
@@ -67,7 +72,20 @@ namespace merit
             c->stratum.submit_work(w);
         };
 
+        BOOST_LOG_TRIVIAL(info) << "connected to: " << url; 
         return true;
+    }
+    catch(std::exception& e)
+    {
+        BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << e.what(); 
+        c->stratum.disconnect();
+        return false;
+    }
+
+    void disconnect_stratum(Context* c)
+    {
+        assert(c);
+        c->stratum.disconnect();
     }
     
     void init_logging()
@@ -77,13 +95,23 @@ namespace merit
     bool run_stratum(Context* c)
     {
         assert(c);
-        if(c->stratum_thread.joinable()) {
+        if(c->stratum.running()) {
             stop_stratum(c);
             return false;
         }
 
+        if(c->stratum_thread.joinable()) {
+            c->stratum_thread.join();
+        }
+
         c->stratum_thread = std::thread([c]() {
-                c->stratum.run();
+                try {
+                    c->stratum.run();
+                } catch(std::exception& e) {
+                    BOOST_LOG_TRIVIAL(error) << "error running stratum: " << e.what(); 
+                }
+                c->stratum.disconnect();
+                BOOST_LOG_TRIVIAL(info) << "stopped stratum."; 
         });
 
         return true;
@@ -92,48 +120,68 @@ namespace merit
     void stop_stratum(Context* c)
     {
         assert(c);
+        BOOST_LOG_TRIVIAL(info) << "stopping stratum..."; 
         c->stratum.stop();
     }
 
     bool run_miner(Context* c, int workers, int threads_per_worker)
+    try
     {
         assert(c);
         using namespace std::chrono_literals;
-
-        if(c->mining_thread.joinable() || c->collab_thread.joinable()) {
-            stop_miner(c);
-            return false;
-        }
 
         if(c->miner && c->miner->running()) {
             stop_miner(c);
             return false;
         }
-        assert(!c->miner);
 
+        c->miner.reset();
+
+        BOOST_LOG_TRIVIAL(info) << "setting up miner..."; 
         c->miner = std::make_unique<miner::Miner>(
                 workers,
                 threads_per_worker,
                 c->submit_work_func);
 
-        std::atomic<bool> started;
-        c->mining_thread = std::thread([c, &started]() {
-                c->miner->run();
+        BOOST_LOG_TRIVIAL(info) << "starting miner..."; 
+        if(c->mining_thread.joinable()) {
+            c->mining_thread.join();
+        }
+        c->mining_thread = std::thread([c]() {
+                try {
+                    c->miner->run();
+                } catch(std::exception& e) {
+                    c->miner->stop();
+                    BOOST_LOG_TRIVIAL(error) << "error running miner: " << e.what(); 
+                }
         });
 
         //TODO: different logic depending on stratum vs solo
+        BOOST_LOG_TRIVIAL(info) << "starting collab thread..."; 
+        if(c->collab_thread.joinable()) {
+            c->collab_thread.join();
+        }
         c->collab_thread = std::thread([c]() {
-                while(!c->miner->running()) {}
-                while(c->miner->running()) {
+                while(c->miner->state() != miner::Miner::Running) {}
+                while(c->miner->running()) 
+                try {
                     auto j = c->stratum.get_job();
                     if(!j) { 
                         std::this_thread::sleep_for(50ms);
                         continue;
                     }
                     c->miner->submit_job(*j);
+                } catch(std::exception& e) {
+                    BOOST_LOG_TRIVIAL(error) << "error getting job: " << e.what(); 
+                    std::this_thread::sleep_for(50ms);
                 }
         });
         return true;
+    }
+    catch(std::exception& e)
+    {
+        BOOST_LOG_TRIVIAL(error) << "error starting miners: " << e.what(); 
+        return false;
     }
 
     void stop_miner(Context* c)
@@ -143,19 +191,30 @@ namespace merit
             return;
         }
         c->miner->stop();
-        c->miner.reset();
     }
 
     bool is_stratum_running(Context* c)
     {
         assert(c);
-        return c->stratum_thread.joinable();
+        return c->stratum.stopping();
     }
 
     bool is_miner_running(Context* c)
     {
         assert(c);
-        return c->mining_thread.joinable() || c->collab_thread.joinable();
+        return c->miner  && c->miner->stopping();
+    }
+
+    bool is_stratum_stopping(Context* c)
+    {
+        assert(c);
+        return c->stratum.stopping();
+    }
+
+    bool is_miner_stopping(Context* c)
+    {
+        assert(c);
+        return c->miner  && c->miner->stopping();
     }
 
 }

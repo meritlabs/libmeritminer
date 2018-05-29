@@ -25,7 +25,7 @@ namespace merit
             assert(workers >= 1);
             assert(threads_per_worker >= 1);
 
-            _running = false;
+            _state = NotRunning;
             BOOST_LOG_TRIVIAL(info) << "workers: " << workers;
             BOOST_LOG_TRIVIAL(info) << "threads per worker: " << threads_per_worker;
 
@@ -49,9 +49,12 @@ namespace merit
         void Miner::run()
         {
             BOOST_LOG_TRIVIAL(info) << "starting workers...";
-            assert(!_running);
             using namespace std::chrono_literals;
-            _running = true;
+            if(_state != NotRunning) {
+                return;
+            } 
+
+            _state = Running;
 
             std::vector<std::future<void>> jobs;
             for(auto& worker : _workers) {
@@ -59,6 +62,7 @@ namespace merit
             }
 
             for(auto& j: jobs) { j.get();}
+            _state = NotRunning;
 
             BOOST_LOG_TRIVIAL(info) << "stopped workers.";
         }
@@ -66,8 +70,7 @@ namespace merit
         void Miner::stop()
         {
             BOOST_LOG_TRIVIAL(info) << "stopping workers...";
-            _running = false;
-            for(auto& w: _workers) { w.stop(); } 
+            _state = Stopping;
         }
 
         util::MaybeWork Miner::next_work() const
@@ -81,9 +84,19 @@ namespace merit
             return _workers.size();
         }
 
-        bool Miner::running() const 
+        Miner::State Miner::state() const 
         {
-            return _running;
+            return _state;
+        }
+
+        bool Miner::running() const
+        {
+            return _state != NotRunning;
+        }
+
+        bool Miner::stopping() const
+        {
+            return _state == Stopping;
         }
 
         Worker::Worker(
@@ -91,12 +104,12 @@ namespace merit
                 int threads,
                 ctpl::thread_pool& pool,
                 Miner& miner) :
+            _state{NotRunning},
             _id{id},
             _threads{threads},
             _pool{pool},
             _miner{miner}
         {
-            _running = false;
         }
 
         Worker::Worker(const Worker& o) :
@@ -105,7 +118,8 @@ namespace merit
             _pool{o._pool},
             _miner{o._miner}
         {
-            _running = o._running ? true : false;
+            State s = o._state;
+            _state = s;
         }
 
         int Worker::id()
@@ -132,12 +146,12 @@ namespace merit
         {
             BOOST_LOG_TRIVIAL(info) << "started worker: " << _id;
             using namespace std::chrono_literals;
-            _running = true;
             util::Work prev_work;
             uint32_t n =  0xffffffffU / _miner.total_workers() * _id;
             uint32_t end_nonce = 0xffffffffU / _miner.total_workers() * (_id + 1) - 0x20;
 
-            while(_running)
+            _state = Running;
+            while(_miner.state() == Miner::Running)
             {
                 auto work = _miner.next_work();
 
@@ -217,14 +231,9 @@ namespace merit
                         _miner.submit_work(*work);
                     }
                 }
-
             }
-        }
-
-        void Worker::stop()
-        {
-            _running = false;
-
+            _state = NotRunning;
+            BOOST_LOG_TRIVIAL(info) << "worker " << _id << " stopped...";
         }
     }
 }

@@ -21,20 +21,23 @@ namespace merit
         class Worker
         {
             public:
+                enum State {Running, NotRunning};
+
                 Worker(const Worker& o);
                 Worker(int id, int threads, ctpl::thread_pool&, Miner&);
+
             public:
 
                 int id();
                 void run();
-                void stop();
+                State state() const;
 
             private:
+                std::atomic<State> _state;
                 int _id;
                 int _threads;
                 ctpl::thread_pool& _pool;
                 Miner& _miner;
-                std::atomic<bool> _running;
         };
 
         using Workers = std::vector<Worker>;
@@ -42,6 +45,8 @@ namespace merit
         class Miner
         {
             public:
+                enum State {Running, Stopping, NotRunning};
+
                 Miner(
                         int workers,
                         int threads_per_worker,
@@ -53,17 +58,19 @@ namespace merit
 
                 void run();
                 void stop();
+                State state() const;
+                bool running() const;
+                bool stopping() const;
 
                 util::MaybeWork next_work() const;
 
                 int total_workers() const;
-                bool running() const;
 
             private:
+                std::atomic<State> _state;
                 ctpl::thread_pool _pool;
                 util::MaybeWork _next_work;
                 util::SubmitWorkFunc _submit_work;
-                std::atomic<bool> _running;
                 Workers _workers;
                 mutable std::mutex _work_mutex;
         };

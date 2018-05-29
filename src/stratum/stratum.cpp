@@ -31,6 +31,7 @@ namespace merit
 
         Client::Client() :
             _state{Disconnected},
+            _run_state{NotRunning},
             _agent{USER_AGENT},
             _socket{_service},
             _new_job{false}
@@ -53,10 +54,12 @@ namespace merit
                     const std::string& iurl, 
                     const std::string& iuser, 
                     const std::string& ipass)
+        try
         {
-            if(_state == Connected) {
+            if(_state != Disconnected) {
                 disconnect();
             }
+            _state = Connecting;
 
             _url = iurl;
             _user = iuser;
@@ -75,7 +78,13 @@ namespace merit
             auto endpoints = resolver.resolve(query);
 
             boost::asio::connect(_socket, endpoints);
+            _state = Connected;
             return true;
+        }
+        catch(std::exception& e)
+        {
+            _state = Disconnected;
+            throw;
         }
 
         void Client::disconnect()
@@ -320,6 +329,7 @@ namespace merit
 
         bool Client::authorize()
         {
+            _state = Authorizing;
             std::stringstream req;
             req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
             if (!send(req.str()))
@@ -328,28 +338,49 @@ namespace merit
                 return false;
             }
 
+            _state = Authorized;
             return true;
         }
 
         bool Client::run()
         {
-            _running = true;
-            while (_running) {
+            _run_state = Running;
+            while (_run_state == Running) {
                 std::string res;
                 if(!recv(res)) {
                     BOOST_LOG_TRIVIAL(error) << "error receiving";
+                    disconnect();
+                    _run_state = NotRunning;
                     return false;
                 }
                 if(!handle_command(res)) {
                     break;
                 }
             }
+            _run_state = NotRunning;
+            BOOST_LOG_TRIVIAL(error) << "stratum stopped.";
+
             return true;
         }
 
         void Client::stop()
         {
-            _running = false;
+            _run_state = Stopping;
+        }
+
+        bool Client::connected() const
+        {
+            return _state != Disconnected;
+        }
+
+        bool Client::running() const
+        {
+            return _run_state != NotRunning;
+        }
+
+        bool Client::stopping() const
+        {
+            return _run_state == Stopping;
         }
 
         MaybeJob Client::get_job()
@@ -410,6 +441,7 @@ namespace merit
 
         bool Client::subscribe()
         {
+            _state = Subscribing;
             std::stringstream req;
             if (!_session_id.empty()) {
                 req << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << _agent << "\", \"" << _session_id << "\"]}";
@@ -486,8 +518,8 @@ namespace merit
             }
             _next_diff = 1.0;
 
+            _state = Subscribed;
             return true;
-
         }
 
         bool Client::send(const std::string& message)

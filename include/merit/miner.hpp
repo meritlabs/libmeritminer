@@ -17,6 +17,8 @@ namespace merit
             const char* user,
             const char* pass);
 
+    void disconnect_stratum(Context* c);
+
     void init_logging();
     bool run_stratum(Context*);
     void stop_stratum(Context*);
@@ -25,5 +27,7 @@ namespace merit
     void stop_miner(Context*);
     bool is_stratum_running(Context*);
     bool is_miner_running(Context*);
+    bool is_stratum_stopping(Context*);
+    bool is_miner_stopping(Context*);
 }
 #endif //MERITMINER_H

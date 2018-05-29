@@ -59,6 +59,9 @@ namespace merit
                 bool authorize();
                 bool run();
                 void stop();
+                bool connected() const;
+                bool running() const;
+                bool stopping() const;
 
                 MaybeJob get_job();
 
@@ -77,13 +80,24 @@ namespace merit
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);
 
             private:
-                enum State {
+                enum ConnState {
                     Disconnected,
+                    Connecting,
                     Connected,
+                    Subscribing,
                     Subscribed,
+                    Authorizing,
                     Authorized,
                     Method,
-                } _state;
+                };
+                std::atomic<ConnState> _state;
+
+                enum RunState {
+                    NotRunning,
+                    Running,
+                    Stopping
+                };
+                std::atomic<RunState> _run_state;
 
                 std::string _agent;
                 std::string _url;
@@ -104,7 +118,6 @@ namespace merit
                 bool _new_job;
                 asio::io_service _service;
                 asio::ip::tcp::socket _socket;
-                std::atomic<bool> _running;
         };
 
         util::Work work_from_job(const stratum::Job&); 
