@@ -4,6 +4,8 @@
 #include <array>
 #include <atomic>
 #include <thread>
+#include <chrono>
+#include <deque>
 #include "util/util.hpp"
 #include "stratum/stratum.hpp"
 
@@ -42,6 +44,26 @@ namespace merit
 
         using Workers = std::vector<Worker>;
 
+        struct Stat
+        {
+            std::chrono::system_clock::time_point start;
+            std::chrono::system_clock::time_point end;
+            std::atomic<int> attempts;
+            std::atomic<int> cycles;
+            std::atomic<int> shares;
+
+            Stat();
+            Stat(const Stat&);
+            Stat& operator=(const Stat&);
+
+            double seconds() const;
+            double attempts_per_second() const;
+            double cycles_per_second() const;
+            double shares_per_second() const;
+        };
+
+        using Stats = std::deque<Stat>;
+
         class Miner
         {
             public:
@@ -62,9 +84,16 @@ namespace merit
                 bool running() const;
                 bool stopping() const;
 
+
                 util::MaybeWork next_work() const;
 
                 int total_workers() const;
+
+                //Stats
+                Stats stats() const;
+                Stat total_stats() const;
+                const Stat& current_stat() const;
+                Stat& current_stat();
 
             private:
                 std::atomic<State> _state;
@@ -72,7 +101,11 @@ namespace merit
                 util::MaybeWork _next_work;
                 util::SubmitWorkFunc _submit_work;
                 Workers _workers;
+                Stats _stats;
+                Stat _total_stats;
+                Stat _current_stat;;
                 mutable std::mutex _work_mutex;
+                mutable std::mutex _stat_mutex;
         };
 
 

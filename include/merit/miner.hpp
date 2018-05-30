@@ -2,6 +2,7 @@
 #define MERITMINER_H
 
 #include <string>
+#include <vector>
 
 namespace merit
 {
@@ -30,5 +31,25 @@ namespace merit
     bool is_stratum_stopping(Context*);
     bool is_miner_stopping(Context*);
     int number_of_cores();
+
+    struct MinerStat
+    {
+        int64_t start;
+        int64_t end;
+        double seconds;
+        double shares_per_second;
+        double cycles_per_second;
+        double attempts_per_second;
+    };
+
+    using StatHistory = std::vector<MinerStat>;
+    struct MinerStats
+    {
+        MinerStat total;
+        MinerStat current;
+        StatHistory history;
+    };
+
+    MinerStats get_miner_stats(Context*);
 }
 #endif //MERITMINER_H

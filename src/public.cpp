@@ -222,6 +222,40 @@ namespace merit
         return std::thread::hardware_concurrency();
     }
 
+    MinerStat to_public_stat(const miner::Stat& s)
+    {
+        return {
+            s.start.time_since_epoch().count(),
+            s.end.time_since_epoch().count(),
+            s.seconds(),
+            s.attempts_per_second(),
+            s.cycles_per_second(),
+            s.shares_per_second()
+        };
+    }
+
+    MinerStats get_miner_stats(Context* c)
+    {
+        assert(c);
+        if(!c->miner) return {};
+
+        auto total = c->miner->total_stats();
+        auto history = c->miner->stats();
+        auto current = c->miner->current_stat();
+
+        MinerStats s;
+        s.total = to_public_stat(total);
+        s.current = to_public_stat(current);
+
+        s.history.resize(history.size());
+        std::transform(
+                history.begin(),
+                history.end(),
+                s.history.begin(),
+                to_public_stat);
+
+        return s;
+    }
 }
 
 

@@ -13,6 +13,64 @@ namespace merit
         namespace 
         {
             const int CUCKOO_PROOF_SIZE = 42;
+            const int MAX_STATS = 100;
+        }
+
+        Stat::Stat()
+        {
+            attempts = 0;
+            cycles = 0;
+            shares = 0;
+        }
+
+        Stat::Stat(const Stat& o) :
+            start{o.start},
+            end{o.end}
+        {
+            int a = o.attempts;
+            int c = o.cycles;
+            int s = o.shares;
+            attempts = a;
+            cycles = c;
+            shares = s;
+        }
+
+        Stat& Stat::operator=(const Stat& o)
+        {
+            if(&o == this) return *this;
+            int a = o.attempts;
+            int c = o.cycles;
+            int s = o.shares;
+            attempts = a;
+            cycles = c;
+            shares = s;
+            return *this;
+        }
+
+        double Stat::seconds() const
+        {
+            return std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+        }
+
+        double Stat::attempts_per_second() const
+        {
+            const double a = attempts;
+            const double s = seconds();
+            return s == 0 ? 0 : a / s;
+        }
+
+        double Stat::cycles_per_second() const
+        {
+            const double a = cycles;
+            const double s = seconds();
+            return s == 0 ? 0 : a / s;
+        }
+
+        double Stat::shares_per_second() const
+        {
+            const double a = shares;
+            const double s = seconds();
+            return s == 0 ? 0 : a / s;
         }
 
         Miner::Miner(
@@ -37,8 +95,41 @@ namespace merit
         void Miner::submit_job(const stratum::Job& j)
         {
             auto w = stratum::work_from_job(j);
-            std::lock_guard<std::mutex> guard{_work_mutex};
-            _next_work = w;
+            {
+                std::lock_guard<std::mutex> guard{_work_mutex};
+                _next_work = w;
+            }
+
+            {
+                std::lock_guard<std::mutex> sguard{_stat_mutex};
+                if(_total_stats.start == std::chrono::system_clock::time_point{}) {
+                    _total_stats.start = std::chrono::system_clock::now();
+                }
+
+                if(_current_stat.start == std::chrono::system_clock::time_point{}) {
+                    _current_stat.start = std::chrono::system_clock::now();
+                } else {
+                    _total_stats.end = std::chrono::system_clock::now();
+                    _current_stat.end = _total_stats.end;
+
+                    auto current = _current_stat;
+
+                    _stats.push_back(current);
+                    if(_stats.size() > MAX_STATS) {
+                        _stats.pop_front();
+                    }
+
+                    _current_stat.start = _current_stat.end;
+
+                    const int a = current.attempts;
+                    const int c = current.cycles;
+                    const int s = current.shares;
+
+                    _total_stats.attempts += a;
+                    _total_stats.cycles += c;
+                    _total_stats.shares += s;
+                }
+            }
         }
 
         void Miner::submit_work(const util::Work& w)
@@ -97,6 +188,27 @@ namespace merit
         bool Miner::stopping() const
         {
             return _state == Stopping;
+        }
+
+        Stats Miner::stats() const
+        {
+            std::lock_guard<std::mutex> lock{_stat_mutex};
+            return _stats;
+        }
+
+        Stat Miner::total_stats() const
+        {
+            return _total_stats;
+        }
+
+        const Stat& Miner::current_stat() const
+        {
+            return _current_stat;
+        }
+
+        Stat& Miner::current_stat()
+        {
+            return _current_stat;
         }
 
         Worker::Worker(
@@ -209,7 +321,12 @@ namespace merit
                         _threads,
                         _pool);
 
+                auto& stat = _miner.current_stat();
+                stat.attempts++;
+
                 if(found) {
+                    stat.cycles++;
+
                     std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
                     std::array<uint32_t, 8> cycle_hash;
                     std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;
@@ -228,6 +345,7 @@ namespace merit
                     util::to_hex(cycle_hash, cycle_hash_hex);
                     BOOST_LOG_TRIVIAL(info) << "(" << _id << ") found cycle: " << cycle_hash_hex;
                     if(target_test(cycle_hash, work->target)) {
+                        stat.shares++;
                         _miner.submit_work(*work);
                     }
                 }
