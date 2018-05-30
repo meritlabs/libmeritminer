@@ -37,9 +37,9 @@ namespace merit
         int64_t start;
         int64_t end;
         double seconds;
-        double shares_per_second;
-        double cycles_per_second;
         double attempts_per_second;
+        double cycles_per_second;
+        double shares_per_second;
         int attempts;
         int cycles;
         int shares;
