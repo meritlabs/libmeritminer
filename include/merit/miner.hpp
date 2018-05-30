@@ -40,6 +40,9 @@ namespace merit
         double shares_per_second;
         double cycles_per_second;
         double attempts_per_second;
+        int attempts;
+        int cycles;
+        int shares;
     };
 
     using StatHistory = std::vector<MinerStat>;

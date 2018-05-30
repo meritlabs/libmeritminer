@@ -230,7 +230,10 @@ namespace merit
             s.seconds(),
             s.attempts_per_second(),
             s.cycles_per_second(),
-            s.shares_per_second()
+            s.shares_per_second(),
+            s.attempts,
+            s.cycles,
+            s.shares
         };
     }
 
