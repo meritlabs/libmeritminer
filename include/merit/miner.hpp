@@ -29,5 +29,6 @@ namespace merit
     bool is_miner_running(Context*);
     bool is_stratum_stopping(Context*);
     bool is_miner_stopping(Context*);
+    int number_of_cores();
 }
 #endif //MERITMINER_H

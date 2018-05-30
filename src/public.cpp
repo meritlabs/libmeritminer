@@ -217,6 +217,11 @@ namespace merit
         return c->miner  && c->miner->stopping();
     }
 
+    int number_of_cores()
+    {
+        return std::thread::hardware_concurrency();
+    }
+
 }
 
 
