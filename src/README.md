@@ -4,5 +4,5 @@ Contains the library source code. The best place to start is in [public.cpp](pub
 
 | Files                                  | Description           |
 |:---------------------------------------|:----------------------|
-| [public.cpp](public.cpp)                 | Implements the public library interface.|
-| [test](test.cpp)                       | Runs various tests against the public interface.|
+| [public.cpp](public.cpp)               | Implements the public library interface.|
+| [minerd](minerd.cpp)                   | Simple commandline program to mine Merit.|

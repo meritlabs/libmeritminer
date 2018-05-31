@@ -1,24 +1,113 @@
+/*
+ * Copyright (C) 2018 The Merit Foundation
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either vedit_refsion 3 of the License, or
+ * (at your option) any later vedit_refsion.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * In addition, as a special exception, the copyright holders give 
+ * permission to link the code of portions of this program with the 
+ * Botan library under certain conditions as described in each 
+ * individual source file, and distribute linked combinations 
+ * including the two.
+ *
+ * You must obey the GNU General Public License in all respects for 
+ * all of the code used other than Botan. If you modify file(s) with 
+ * this exception, you may extend this exception to your version of the 
+ * file(s), but you are not obligated to do so. If you do not wish to do 
+ * so, delete this exception statement from your version. If you delete 
+ * this exception statement from all source files in the program, then 
+ * also delete it here.
+ */
 #include <merit/miner.hpp>
 
 #include <iostream>
+#include <string>
 #include <memory>
 #include <chrono>
 #include <thread>
+#include <utility>
+
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
+std::pair<int, int> determine_utilization(int cores)
+{
+    return cores & 1 ? std::make_pair(cores, 1) : std::make_pair(cores / 2, 2);
+}
 
 int main(int argc, char** argv) 
 {
-    merit::init_logging();
+    po::options_description desc("Allowed options");
+    std::string url;
+    std::string address;
+    desc.add_options()
+        ("help", "show the help message")
+        ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
+        ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
+        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The address to send mining rewards to.");
+
+
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;;
+        return 1;
+    }
+
+    if(address.empty()) {
+        std::cout << "forgot to set your reward address. use --address" << std::endl;
+        return 1;
+    }
+
+    int cores;
+    cores = vm["cores"].as<int>();
+    cores = std::max(1, cores);
+    auto utilization = determine_utilization(cores);
+
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
-    if(!merit::connect_stratum(c.get(),"stratum+tcp://testnet.pool.merit.me:3333", "mbKj9Pr3qY2DucGjrERCWEHjoJtcyHuL5e", "foo")) {
+
+    if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
         std::cerr << "Error connecting" << std::endl;
         return 1;
     }
     merit::run_stratum(c.get());
-    merit::run_miner(c.get(), 1 ,1);
+    merit::run_miner(c.get(), utilization.first ,utilization.second);
+
+    int prev_graphs = 0;
     while(true) { 
         using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(5s);
+
+        auto stats = merit::get_miner_stats(c.get());
+        auto graphs = stats.total.attempts + stats.current.attempts;
+        auto cycles = stats.total.cycles + stats.current.cycles;
+        auto shares = stats.total.shares + stats.current.shares;
+        auto graphps = stats.total.attempts_per_second;
+        auto cyclesps = stats.total.cycles_per_second;
+        auto sharesps = stats.total.shares_per_second;
+        if(graphs > prev_graphs) {
+            std::cout << "graphs: " << graphs << " cycles: " << cycles << " shares: " << shares;
+            if(stats.total.attempts > 0) {
+                std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps << std::endl;
+            }
+            std::cout << std::endl;
+        }
+        prev_graphs = graphs;
     }
     return 0;
 }
