@@ -10,6 +10,10 @@ Library that mines merit.
 - Support multithreaded cpu mining.
 - Support gpu mining.
 
+## Usage
+
+See the commandline tool [merit-minerd](src/minerd.cpp) for an example of using the library.
+
 ## Compiling
 
     mkdir build
