@@ -8,15 +8,6 @@
 #include <atomic>
 #include <chrono>
 
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/sinks/text_file_backend.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/sources/severity_logger.hpp>
-#include <boost/log/sources/record_ostream.hpp>
-
 namespace merit
 {
 
@@ -50,21 +41,21 @@ namespace merit
     {
         assert(c);
 
-        BOOST_LOG_TRIVIAL(info) << "connecting to: " << url; 
+        std::cerr << "info: " << "connecting to: " << url<< std::endl; 
         if(!c->stratum.connect(url, user, pass)) {
-            BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << url; 
+            std::cerr << "error: " << "error connecting to stratum server: " << url<< std::endl; 
             return false;
         }
 
-        BOOST_LOG_TRIVIAL(info) << "subscribing to: " << url; 
+        std::cerr << "info: " << "subscribing to: " << url<< std::endl; 
         if(!c->stratum.subscribe()) {
-            BOOST_LOG_TRIVIAL(error) << "error subscribing to stratum server: " << url; 
+            std::cerr << "error: " << "error subscribing to stratum server: " << url<< std::endl; 
             return false;
         }
 
-        BOOST_LOG_TRIVIAL(info) << "authorizing as: " << user; 
+        std::cerr << "info: " << "authorizing as: " << user<< std::endl; 
         if(!c->stratum.authorize()) {
-            BOOST_LOG_TRIVIAL(error) << "error authorize to stratum server: " << url; 
+            std::cerr << "error: " << "error authorize to stratum server: " << url<< std::endl; 
             return false;
         }
 
@@ -72,12 +63,12 @@ namespace merit
             c->stratum.submit_work(w);
         };
 
-        BOOST_LOG_TRIVIAL(info) << "connected to: " << url; 
+        std::cerr << "info: " << "connected to: " << url<< std::endl; 
         return true;
     }
     catch(std::exception& e)
     {
-        BOOST_LOG_TRIVIAL(error) << "error connecting to stratum server: " << e.what(); 
+        std::cerr << "error: " << "error connecting to stratum server: " << e.what()<< std::endl; 
         c->stratum.disconnect();
         return false;
     }
@@ -114,10 +105,10 @@ namespace merit
                 try {
                     c->stratum.run();
                 } catch(std::exception& e) {
-                    BOOST_LOG_TRIVIAL(error) << "error running stratum: " << e.what(); 
+                std::cerr << "error: " << "error running stratum: " << e.what()<< std::endl; 
                 }
                 c->stratum.disconnect();
-                BOOST_LOG_TRIVIAL(info) << "stopped stratum."; 
+                std::cerr << "info: " << "stopped stratum."<< std::endl; 
         });
 
         return true;
@@ -126,7 +117,7 @@ namespace merit
     void stop_stratum(Context* c)
     {
         assert(c);
-        BOOST_LOG_TRIVIAL(info) << "stopping stratum..."; 
+        std::cerr << "info: " << "stopping stratum..."<< std::endl; 
         c->stratum.stop();
     }
 
@@ -143,13 +134,13 @@ namespace merit
 
         c->miner.reset();
 
-        BOOST_LOG_TRIVIAL(info) << "setting up miner..."; 
+        std::cerr << "info: " << "setting up miner..."<< std::endl; 
         c->miner = std::make_unique<miner::Miner>(
                 workers,
                 threads_per_worker,
                 c->submit_work_func);
 
-        BOOST_LOG_TRIVIAL(info) << "starting miner..."; 
+        std::cerr << "info: " << "starting miner..."<< std::endl; 
         if(c->mining_thread.joinable()) {
             c->mining_thread.join();
         }
@@ -158,12 +149,12 @@ namespace merit
                     c->miner->run();
                 } catch(std::exception& e) {
                     c->miner->stop();
-                    BOOST_LOG_TRIVIAL(error) << "error running miner: " << e.what(); 
+                    std::cerr << "error: " << "error running miner: " << e.what()<< std::endl; 
                 }
         });
 
         //TODO: different logic depending on stratum vs solo
-        BOOST_LOG_TRIVIAL(info) << "starting collab thread..."; 
+        std::cerr << "info: " << "starting collab thread..."<< std::endl; 
         if(c->collab_thread.joinable()) {
             c->collab_thread.join();
         }
@@ -183,7 +174,7 @@ namespace merit
                     c->miner->submit_job(*j);
 
                 } catch(std::exception& e) {
-                    BOOST_LOG_TRIVIAL(error) << "error getting job: " << e.what(); 
+                std::cerr << "error: " << "error getting job: " << e.what()<< std::endl; 
                     std::this_thread::sleep_for(50ms);
                 }
         });
@@ -191,7 +182,7 @@ namespace merit
     }
     catch(std::exception& e)
     {
-        BOOST_LOG_TRIVIAL(error) << "error starting miners: " << e.what(); 
+        std::cerr << "error: " << "error starting miners: " << e.what()<< std::endl; 
         return false;
     }
 

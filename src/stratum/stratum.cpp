@@ -4,7 +4,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include <boost/log/trivial.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <iostream>
@@ -75,7 +74,7 @@ namespace merit
                         &vals,
                         sizeof(vals),
                         NULL, 0, &outputBytes, NULL, NULL)) {
-                BOOST_LOG_TRIVIAL(error) << "error setting keepalive";
+                std::cerr << "error: " << "error setting keepalive" << std::endl;
                 return false;
             }
 #else
@@ -85,7 +84,7 @@ namespace merit
                         SO_KEEPALIVE,
                         &CKEEPALIVE,
                         sizeof(CKEEPALIVE))) {
-                BOOST_LOG_TRIVIAL(error) << "error setting keepalive";
+                std::cerr << "error: " << "error setting keepalive" << std::endl;
                 return false;
             }
 #ifdef __linux
@@ -95,7 +94,7 @@ namespace merit
                         TCP_KEEPCNT,
                         &CTCP_KEEPCNT,
                         sizeof(CTCP_KEEPCNT))) {
-                BOOST_LOG_TRIVIAL(error) << "error setting keepcnt";
+                std::cerr << "error: " << "error setting keepcnt" << std::endl;
                 return false;
             }
             if (setsockopt(
@@ -104,7 +103,7 @@ namespace merit
                         TCP_KEEPIDLE,
                         &CTCP_KEEPIDLE,
                         sizeof(CTCP_KEEPIDLE))) { 
-                BOOST_LOG_TRIVIAL(error) << "error setting keepidle";
+                std::cerr << "error: " << "error setting keepidle" << std::endl;
                 return false;
             }
             if (setsockopt(
@@ -113,7 +112,7 @@ namespace merit
                         TCP_KEEPINTVL,
                         &CTCP_KEEPINTVL,
                         sizeof(CTCP_KEEPINTVL))) {
-                BOOST_LOG_TRIVIAL(error) << "error setting keepintvl";
+                std::cerr << "error: " << "error setting keepintvl" << std::endl;
                 return false;
             }
 #endif
@@ -124,7 +123,7 @@ namespace merit
                         TCP_KEEPALIVE,
                         &CTCP_KEEPINTVL,
                         sizeof(CTCP_KEEPINTVL))) {
-                BOOST_LOG_TRIVIAL(error) << "error setting keepintvl";
+                std::cerr << "error: " << "error setting keepintvl" << std::endl;
                 return false;
             }
 #endif
@@ -152,8 +151,8 @@ namespace merit
             _host = _url.substr(host_pos, port_pos - host_pos - 1);
             _port = _url.substr(port_pos);
 
-            BOOST_LOG_TRIVIAL(info) << "host: " << _host;
-            BOOST_LOG_TRIVIAL(info) << "port: " << _port;
+            std::cerr << "info: " << "host: " << _host << std::endl;
+            std::cerr << "info: " << "port: " << _port << std::endl;
 
 
             asio::ip::tcp::resolver resolver{_service};
@@ -199,7 +198,7 @@ namespace merit
         } 
         catch(std::exception& e) 
         {
-            BOOST_LOG_TRIVIAL(error) << "error parsing json: " << e.what();
+            std::cerr << "error: " << "error parsing json: " << e.what() << std::endl;
             return false;
         }
 
@@ -301,7 +300,7 @@ namespace merit
             j.diff = _next_diff;
             j.clean = *is_clean;
             _new_job = true;
-            BOOST_LOG_TRIVIAL(info) << "notify: " << j.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << j.nedgebits << " prevhash: " << *prevhash;
+            std::cerr << "info: " << "notify: " << j.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << j.nedgebits << " prevhash: " << *prevhash << std::endl;
 
             _job = j;
 
@@ -317,7 +316,7 @@ namespace merit
             }
 
             _next_diff = *diff;
-            BOOST_LOG_TRIVIAL(info) << "difficulty: " << *diff;
+            std::cerr << "info: " << "difficulty: " << *diff << std::endl;
             return true;
         }
 
@@ -363,7 +362,7 @@ namespace merit
             auto v = params.begin();
             auto msg = v->second.get_value_optional<std::string>(); v++;
             if(msg) {
-                BOOST_LOG_TRIVIAL(info) << "message: " << *msg;
+                std::cerr << "info: " << "message: " << *msg << std::endl;
             }
 
             return true;
@@ -373,7 +372,7 @@ namespace merit
         {
             pt::ptree val;
             if(!parse_json(res, val)) {
-                BOOST_LOG_TRIVIAL(error) << "error parsing stratum response";
+                std::cerr << "error: " << "error parsing stratum response" << std::endl;
                 return false;
             }
 
@@ -385,35 +384,35 @@ namespace merit
 
             auto params = val.get_child_optional("params");
             if(!params) {
-                BOOST_LOG_TRIVIAL(error) << "unable to get params from response";
+                std::cerr << "error: " << "unable to get params from response" << std::endl;
                 return false;
             }
 
             if(*method == "mining.notify") {
                 if(!mining_notify(*params)) {
-                    BOOST_LOG_TRIVIAL(error) << "unable to set mining.notify";
+                    std::cerr << "error: " << "unable to set mining.notify" << std::endl;
                     return false;
                 }
             } else if(*method == "mining.set_difficulty") {
                 if(!mining_difficulty(*params)) {
-                    BOOST_LOG_TRIVIAL(error) << "unable to set mining.difficulty";
+                    std::cerr << "error: " << "unable to set mining.difficulty" << std::endl;
                     return false;
                 }
             } else if(*method == "client.reconnect") {
                 if(!client_reconnect(*params)) {
-                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.reconnect";
+                    std::cerr << "error: " << "unable to execute client.reconnect" << std::endl;
                     return false;
                 }
             } else if(*method == "client.get_version") {
                 if(!id || !client_get_version(*id)) {
-                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.get_version";
+                    std::cerr << "error: " << "unable to execute client.get_version" << std::endl;
                     return false;
                 }
             } else if(*method == "client.show_message") {
                 if(!id) { return true; }
 
                 if(!client_show_message(*params, *id)) {
-                    BOOST_LOG_TRIVIAL(error) << "unable to execute client.show_message";
+                    std::cerr << "error: " << "unable to execute client.show_message" << std::endl;
                     return false;
                 }
             }
@@ -428,7 +427,7 @@ namespace merit
             req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
             if (!send(req.str()))
             {
-                BOOST_LOG_TRIVIAL(error) << "error sending authorize request";
+                std::cerr << "error: " << "error sending authorize request" << std::endl;
                 return false;
             }
 
@@ -454,7 +453,7 @@ namespace merit
                     }
                 }
                 catch(std::exception e) {
-                    BOOST_LOG_TRIVIAL(error) << "error reconnecting: " << e.what();
+                    std::cerr << "error: " << "error reconnecting: " << e.what() << std::endl;
                 }
 
                 if(!connected) {
@@ -465,7 +464,7 @@ namespace merit
                     auto t = min_reconnect_time * dist(_mt);
                     tries++;
 
-                    BOOST_LOG_TRIVIAL(error) << "error connecting, reconnecting in " << t.count() << "ms...";
+                    std::cerr << "error: " << "error connecting, reconnecting in " << t.count() << "ms..." << std::endl;
                     std::this_thread::sleep_for(t);
                 }
             }
@@ -480,7 +479,7 @@ namespace merit
             try {
                 std::string res;
                 if(!recv(res)) {
-                    BOOST_LOG_TRIVIAL(error) << "error receiving";
+                    std::cerr << "error: " << "error receiving" << std::endl;
                     throw std::runtime_error("error receiving");
                 }
                 if(!handle_command(res)) {
@@ -488,15 +487,15 @@ namespace merit
                 }
             } catch(std::exception& e) {
                 if(!reconnect()) {
-                    BOOST_LOG_TRIVIAL(error) << "failed to reconnect";
+                    std::cerr << "error: " << "failed to reconnect" << std::endl;
                     return false;
                 } else {
-                    BOOST_LOG_TRIVIAL(error) << "reconnected!";
+                    std::cerr << "error: " << "reconnected!" << std::endl;
                 }
             }
 
             _run_state = NotRunning;
-            BOOST_LOG_TRIVIAL(error) << "stratum stopped.";
+            std::cerr << "error: " << "stratum stopped." << std::endl;
 
             return true;
         }
@@ -571,9 +570,9 @@ namespace merit
                 << "\"" << cycle.str() << "\"], \"id\":4}";
 
             if(!send(req.str())) {
-                BOOST_LOG_TRIVIAL(error) << "Error submitting work: " << req.str();
+                std::cerr << "error: " << "Error submitting work: " << req.str() << std::endl;
             } else {
-                BOOST_LOG_TRIVIAL(info) << "submitted work: " << req.str();
+                std::cerr << "info: " << "submitted work: " << req.str() << std::endl;
             }
         }
 
@@ -588,7 +587,7 @@ namespace merit
             }
 
             if (!send(req.str())) {
-                BOOST_LOG_TRIVIAL(error) << "subscribe failed" << std::endl;
+                std::cerr << "error: " << "subscribe failed" << std::endl;
                 return false;
             }
             return subscribe_resp();
@@ -603,7 +602,7 @@ namespace merit
 
             pt::ptree resp;
             if(!parse_json(resp_line, resp)) {
-                BOOST_LOG_TRIVIAL(error) << "error parsing response: " << resp_line;
+                std::cerr << "error: " << "error parsing response: " << resp_line << std::endl;
                 return false;
             }
 
@@ -611,20 +610,20 @@ namespace merit
             if(!result) {
                 auto err = resp.get_optional<std::string>("error");
                 if(err) {
-                    BOOST_LOG_TRIVIAL(error) << "subscribe error : " << *err;
+                    std::cerr << "error: " << "subscribe error : " << *err << std::endl;
                 } else {
-                    BOOST_LOG_TRIVIAL(error) << "unknown subscribe error";
+                    std::cerr << "error: " << "unknown subscribe error" << std::endl;
                 }
                 return false;
             }
 
             if(result->size() < 3) {
-                BOOST_LOG_TRIVIAL(error) << "not enough values in response";
+                std::cerr << "error: " << "not enough values in response" << std::endl;
                 return false;
             }
 
             if(!find_session_id(*result, _session_id)) {
-                BOOST_LOG_TRIVIAL(error) << "failed to find the session id";
+                std::cerr << "error: " << "failed to find the session id" << std::endl;
                 return false;
             }
 
@@ -633,26 +632,26 @@ namespace merit
 
             auto xnonce1 = res->second.get_value_optional<std::string>();
             if(!xnonce1) {
-                BOOST_LOG_TRIVIAL(error) << "invalid extranonce";
+                std::cerr << "error: " << "invalid extranonce" << std::endl;
                 return false;
             }
 
             res++;
             auto xnonce2_size = res->second.get_value_optional<int>();
             if(!xnonce2_size) {
-                BOOST_LOG_TRIVIAL(error) << "cannot parse extranonce size";
+                std::cerr << "error: " << "cannot parse extranonce size" << std::endl;
                 return false;
             }
 
             _xnonce2_size = *xnonce2_size;
 
             if (_xnonce2_size < 0 || _xnonce2_size > 100) {
-                BOOST_LOG_TRIVIAL(error) << "invalid extranonce2 size";
+                std::cerr << "error: " << "invalid extranonce2 size" << std::endl;
                 return false;
             }
 
             if(!util::parse_hex(*xnonce1, _xnonce1)) {
-                BOOST_LOG_TRIVIAL(error) << "error parsing extranonce1";
+                std::cerr << "error: " << "error parsing extranonce1" << std::endl;
             }
             _next_diff = 1.0;
 
@@ -685,7 +684,7 @@ namespace merit
                     boost::system::error_code error;
                     auto len = _socket.read_some(asio::buffer(s), error);
                     if(error && error != boost::asio::error::eof) {
-                        BOOST_LOG_TRIVIAL(error) << "error receiving data: " << error << std::endl;
+                        std::cerr << "error: " << "error receiving data: " << error << std::endl;
                         return false;
                     } 
                     

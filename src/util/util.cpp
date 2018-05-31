@@ -1,6 +1,6 @@
 #include "util/util.hpp"
 
-#include <crypto++/sha.h>
+#include "PicoSHA2/picosha2.h"
 
 namespace merit
 {
@@ -11,12 +11,9 @@ namespace merit
                 const unsigned char* data,
                 size_t len)
         {
-            CryptoPP::SHA256 hash;
-            std::array<unsigned char, CryptoPP::SHA256::DIGESTSIZE> d;
-            CryptoPP::SHA256{}.CalculateDigest(d.data(), data, len);
-            std::array<unsigned char, CryptoPP::SHA256::DIGESTSIZE> d2;
-            CryptoPP::SHA256{}.CalculateDigest(d2.data(), d.data(), d.size());
-            std::copy(d2.begin(), d2.end(), digest);
+            std::array<unsigned char, picosha2::k_digest_size> d;
+            picosha2::hash256(data, data+len, d.begin(), d.end());
+            picosha2::hash256(d.begin(), d.end(), digest, digest+picosha2::k_digest_size);
         }
     }
 }

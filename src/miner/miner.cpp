@@ -1,6 +1,5 @@
 #include "miner/miner.hpp"
 #include "cuckoo/mean_cuckoo.h"
-#include <boost/log/trivial.hpp>
 
 #include<chrono>
 #include<iostream>
@@ -84,8 +83,8 @@ namespace merit
             assert(threads_per_worker >= 1);
 
             _state = NotRunning;
-            BOOST_LOG_TRIVIAL(info) << "workers: " << workers;
-            BOOST_LOG_TRIVIAL(info) << "threads per worker: " << threads_per_worker;
+            std::cerr << "info: " << "workers: " << workers << std::endl;
+            std::cerr << "info: " << "threads per worker: " << threads_per_worker << std::endl;
 
             for(int i = 0; i < workers; i++) {
                 _workers.emplace_back(i, threads_per_worker, _pool, *this);
@@ -143,7 +142,7 @@ namespace merit
 
         void Miner::run()
         {
-            BOOST_LOG_TRIVIAL(info) << "starting workers...";
+            std::cerr << "info: " << "starting workers..." << std::endl;
             using namespace std::chrono_literals;
             if(_state != NotRunning) {
                 return;
@@ -159,12 +158,12 @@ namespace merit
             for(auto& j: jobs) { j.get();}
             _state = NotRunning;
 
-            BOOST_LOG_TRIVIAL(info) << "stopped workers.";
+            std::cerr << "info: " << "stopped workers." << std::endl;
         }
 
         void Miner::stop()
         {
-            BOOST_LOG_TRIVIAL(info) << "stopping workers...";
+            std::cerr << "info: " << "stopping workers..." << std::endl;
             _state = Stopping;
         }
 
@@ -260,7 +259,7 @@ namespace merit
 
         void Worker::run()
         {
-            BOOST_LOG_TRIVIAL(info) << "started worker: " << _id;
+            std::cerr << "info: " << "started worker: " << _id << std::endl;
             using namespace std::chrono_literals;
             util::Work prev_work;
             uint32_t n =  0xffffffffU / _miner.total_workers() * _id;
@@ -283,7 +282,7 @@ namespace merit
                     work->data[19] = ++n;
 
                 } else {
-                    BOOST_LOG_TRIVIAL(info) << "(" << _id << ") got work: " << work->jobid;
+                    std::cerr << "info: " << "(" << _id << ") got work: " << work->jobid << std::endl;
                     n =  0xffffffffU / _miner.total_workers() * _id;
                     work->data[19] = n;
                     prev_work = *work;
@@ -347,7 +346,7 @@ namespace merit
 
                     std::string cycle_hash_hex;
                     util::to_hex(cycle_hash, cycle_hash_hex);
-                    BOOST_LOG_TRIVIAL(info) << "(" << _id << ") found cycle: " << cycle_hash_hex;
+                    std::cerr << "info: " << "(" << _id << ") found cycle: " << cycle_hash_hex << std::endl;
                     if(target_test(cycle_hash, work->target)) {
                         stat.shares++;
                         _miner.submit_work(*work);
@@ -355,7 +354,7 @@ namespace merit
                 }
             }
             _state = NotRunning;
-            BOOST_LOG_TRIVIAL(info) << "worker " << _id << " stopped...";
+            std::cerr << "info: " << "worker " << _id << " stopped..." << std::endl;
         }
     }
 }
