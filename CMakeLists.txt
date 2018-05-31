@@ -52,11 +52,11 @@ add_library(fatmeritminer STATIC IMPORTED GLOBAL)
 add_dependencies(fatmeritminer combined)
 set_target_properties(fatmeritminer PROPERTIES IMPORTED_LOCATION ${FAT_LIB})
 
-add_executable(meritminertest src/test.cpp)
-target_link_libraries(meritminertest fatmeritminer pthread)
+add_executable(merit-minerd src/minerd.cpp)
+target_link_libraries(merit-minerd fatmeritminer pthread)
 set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
 
-install(TARGETS meritminertest meritminer
+install(TARGETS merit-minerd meritminer
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
             PUBLIC_HEADER DESTINATION include/merit
