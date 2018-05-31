@@ -132,6 +132,10 @@ namespace merit
             }
         }
 
+        void Miner::clear_job() {
+            _next_work.reset();
+        }
+
         void Miner::submit_work(const util::Work& w)
         {
             _submit_work(w);

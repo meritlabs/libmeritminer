@@ -19,6 +19,7 @@ namespace merit
             const char* pass);
 
     void disconnect_stratum(Context* c);
+    bool is_stratum_connected(Context* c);
 
     void init_logging();
     bool run_stratum(Context*);

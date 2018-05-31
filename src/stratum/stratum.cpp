@@ -11,6 +11,11 @@
 #include <sstream>
 #include <iterator>
 
+#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
+#include <winsock2.h>
+#include <mstcpip.h>
+#endif
+
 
 namespace pt = boost::property_tree;
 
@@ -23,6 +28,10 @@ namespace merit
             const size_t MAX_ALLOC_SIZE = 2*1024*1024;
             const size_t BUFFER_SIZE = 2048;
             const size_t RECV_SIZE = (BUFFER_SIZE - 4);
+            const int CKEEPALIVE = 1;
+            const int CTCP_KEEPCNT = 3;
+            const int CTCP_KEEPIDLE = 50;
+            const int CTCP_KEEPINTVL = 30;
 
             const std::string PACKAGE_NAME = "meritminer";
             const std::string PACKAGE_VERSION = "0.0.1";
@@ -34,7 +43,8 @@ namespace merit
             _run_state{NotRunning},
             _agent{USER_AGENT},
             _socket{_service},
-            _new_job{false}
+            _new_job{false},
+            _mt{_rd()}
         {
         }
 
@@ -48,6 +58,78 @@ namespace merit
                 const std::string& version)
         {
             _agent = software + "/" + version;
+        }
+
+        bool set_socket_opts(asio::ip::tcp::socket& sock)
+        {
+
+#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
+            struct tcp_keepalive vals;
+            vals.onoff = 1;
+            vals.keepalivetime = CTCP_KEEPIDLE * 1000;
+            vals.keepaliveinterval = CTCP_KEEPINTVL * 1000;
+            DWORD outputBytes;
+            if (WSAIoctl(
+                        sock.native_handle(),
+                        SIO_KEEPALIVE_VALS,
+                        &vals,
+                        sizeof(vals),
+                        NULL, 0, &outputBytes, NULL, NULL)) {
+                BOOST_LOG_TRIVIAL(error) << "error setting keepalive";
+                return false;
+            }
+#else
+            if (setsockopt(
+                        sock.native_handle(),
+                        SOL_SOCKET,
+                        SO_KEEPALIVE,
+                        &CKEEPALIVE,
+                        sizeof(CKEEPALIVE))) {
+                BOOST_LOG_TRIVIAL(error) << "error setting keepalive";
+                return false;
+            }
+#ifdef __linux
+            if (setsockopt(
+                        sock.native_handle(),
+                        SOL_TCP,
+                        TCP_KEEPCNT,
+                        &CTCP_KEEPCNT,
+                        sizeof(CTCP_KEEPCNT))) {
+                BOOST_LOG_TRIVIAL(error) << "error setting keepcnt";
+                return false;
+            }
+            if (setsockopt(
+                        sock.native_handle(),
+                        SOL_TCP,
+                        TCP_KEEPIDLE,
+                        &CTCP_KEEPIDLE,
+                        sizeof(CTCP_KEEPIDLE))) { 
+                BOOST_LOG_TRIVIAL(error) << "error setting keepidle";
+                return false;
+            }
+            if (setsockopt(
+                        sock.native_handle(),
+                        SOL_TCP,
+                        TCP_KEEPINTVL,
+                        &CTCP_KEEPINTVL,
+                        sizeof(CTCP_KEEPINTVL))) {
+                BOOST_LOG_TRIVIAL(error) << "error setting keepintvl";
+                return false;
+            }
+#endif
+#ifdef __APPLE_CC__
+            if (setsockopt(
+                        sock.native_handle(),
+                        IPPROTO_TCP,
+                        TCP_KEEPALIVE,
+                        &CTCP_KEEPINTVL,
+                        sizeof(CTCP_KEEPINTVL))) {
+                BOOST_LOG_TRIVIAL(error) << "error setting keepintvl";
+                return false;
+            }
+#endif
+#endif
+            return true;
         }
 
         bool Client::connect(
@@ -73,11 +155,23 @@ namespace merit
             BOOST_LOG_TRIVIAL(info) << "host: " << _host;
             BOOST_LOG_TRIVIAL(info) << "port: " << _port;
 
+
             asio::ip::tcp::resolver resolver{_service};
             asio::ip::tcp::resolver::query query{_host, _port};
             auto endpoints = resolver.resolve(query);
 
-            boost::asio::connect(_socket, endpoints);
+            boost::system::error_code e;
+            boost::asio::connect(_socket, endpoints, e);
+
+            if(e) {
+                disconnect();
+                return false;
+            }
+
+            if(!set_socket_opts(_socket)) {
+                return false;
+            }
+
             _state = Connected;
             return true;
         }
@@ -342,21 +436,65 @@ namespace merit
             return true;
         }
 
+        bool Client::reconnect()
+        {
+            using namespace std::chrono_literals;
+            disconnect();
+            bool connected = false;
+            auto min_reconnect_time = 50ms;
+            int tries = 1;
+            while(_run_state == Running && !connected) {
+                try {
+                    connected = connect(_url, _user, _pass); 
+                    if(connected) { 
+                        connected = subscribe();
+                        if(connected) {
+                            connected = authorize();
+                        }
+                    }
+                }
+                catch(std::exception e) {
+                    BOOST_LOG_TRIVIAL(error) << "error reconnecting: " << e.what();
+                }
+
+                if(!connected) {
+                    //exponential backoff
+                    int k = std::pow(2, tries) - 1;
+                    std::uniform_int_distribution<int> dist{1, k};
+
+                    auto t = min_reconnect_time * dist(_mt);
+                    tries++;
+
+                    BOOST_LOG_TRIVIAL(error) << "error connecting, reconnecting in " << t.count() << "ms...";
+                    std::this_thread::sleep_for(t);
+                }
+            }
+
+            return true;
+        }
+
         bool Client::run()
         {
             _run_state = Running;
-            while (_run_state == Running) {
+            while (_run_state == Running) 
+            try {
                 std::string res;
                 if(!recv(res)) {
                     BOOST_LOG_TRIVIAL(error) << "error receiving";
-                    disconnect();
-                    _run_state = NotRunning;
-                    return false;
+                    throw std::runtime_error("error receiving");
                 }
                 if(!handle_command(res)) {
-                    break;
+                    continue;
+                }
+            } catch(std::exception& e) {
+                if(!reconnect()) {
+                    BOOST_LOG_TRIVIAL(error) << "failed to reconnect";
+                    return false;
+                } else {
+                    BOOST_LOG_TRIVIAL(error) << "reconnected!";
                 }
             }
+
             _run_state = NotRunning;
             BOOST_LOG_TRIVIAL(error) << "stratum stopped.";
 

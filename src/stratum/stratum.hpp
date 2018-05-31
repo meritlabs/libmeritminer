@@ -2,6 +2,7 @@
 #define MERIT_MINER_STRATUM_H
 
 #include <thread>
+#include <random>
 #include <mutex>
 #include <array>
 #include <vector>
@@ -68,6 +69,7 @@ namespace merit
                 void submit_work(const util::Work&);
 
             private:
+                bool reconnect();
                 bool send(const std::string&);
                 bool recv(std::string&);
                 void cleanup();
@@ -118,6 +120,8 @@ namespace merit
                 bool _new_job;
                 asio::io_service _service;
                 asio::ip::tcp::socket _socket;
+                std::random_device _rd;
+                std::mt19937 _mt;
         };
 
         util::Work work_from_job(const stratum::Job&); 

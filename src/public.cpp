@@ -87,6 +87,12 @@ namespace merit
         assert(c);
         c->stratum.disconnect();
     }
+
+    bool is_stratum_connected(Context* c)
+    {
+        assert(c);
+        return c->stratum.connected();
+    }
     
     void init_logging()
     {
@@ -167,10 +173,15 @@ namespace merit
                 try {
                     auto j = c->stratum.get_job();
                     if(!j) { 
+                        if(!c->stratum.connected()) {
+                            c->miner->clear_job();
+                        }
                         std::this_thread::sleep_for(50ms);
                         continue;
                     }
+
                     c->miner->submit_job(*j);
+
                 } catch(std::exception& e) {
                     BOOST_LOG_TRIVIAL(error) << "error getting job: " << e.what(); 
                     std::this_thread::sleep_for(50ms);

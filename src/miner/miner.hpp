@@ -77,6 +77,7 @@ namespace merit
             public:
                 void submit_job(const stratum::Job&);
                 void submit_work(const util::Work&);
+                void clear_job();
 
                 void run();
                 void stop();
