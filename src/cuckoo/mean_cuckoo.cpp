@@ -38,12 +38,8 @@
 #include <bitset>
 #include <condition_variable>
 #include <mutex>
-#include <pthread.h>
-#include <string.h>
-#include <sys/time.h>
 #include <thread>
-#include <unistd.h>
-#include <x86intrin.h>
+#include <cstdint>
 
 // algorithm/performance parameters
 
@@ -90,9 +86,9 @@ namespace merit
 
         const int MAXPATHLEN = 8192;
         /** Minimum number of edge bits for cuckoo miner - block.nEdgeBits value */
-        const uint16_t MIN_EDGE_BITS = 16;
+        const std::uint16_t MIN_EDGE_BITS = 16;
         /** Maximum number of edge bits for cuckoo miner - block.nEdgeBits value */
-        const uint16_t MAX_EDGE_BITS = 31;
+        const std::uint16_t MAX_EDGE_BITS = 31;
 
         // for p close to 0, Pr(X>=k) < e^{-n*p*eps^2} where k=n*p*(1+eps)
         // see https://en.wikipedia.org/wiki/Binomial_distribution#Tail_bounds
@@ -111,7 +107,7 @@ namespace merit
 #endif
 
         // convenience function for extracting siphash keys from header
-        void setHeader(const char *header, const uint32_t headerlen, crypto::siphash_keys *keys)
+        void setHeader(const char *header, const std::uint32_t headerlen, crypto::siphash_keys *keys)
         {
             char hdrkey[32];
             blake2b((void *)hdrkey, sizeof(hdrkey), (const void *)header, headerlen, 0, 0);
@@ -148,94 +144,94 @@ namespace merit
                 std::size_t nGeneration;
         };
 
-        template <uint8_t EDGEBITS, uint8_t XBITS>
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
             struct Params {
                 // prepare params for algorithm
-                const static uint32_t EDGEMASK = (1LU << EDGEBITS) - 1U;
+                const static std::uint32_t EDGEMASK = (1LU << EDGEBITS) - 1U;
 
-                const static uint8_t YBITS = XBITS;
-                const static uint32_t NX = 1 << XBITS;
-                const static uint32_t XMASK = NX - 1;
+                const static std::uint8_t YBITS = XBITS;
+                const static std::uint32_t NX = 1 << XBITS;
+                const static std::uint32_t XMASK = NX - 1;
 
-                const static uint32_t NY = 1 << YBITS;
-                const static uint32_t YMASK = NY - 1;
+                const static std::uint32_t NY = 1 << YBITS;
+                const static std::uint32_t YMASK = NY - 1;
 
-                const static uint32_t XYBITS = XBITS + YBITS;
-                const static uint32_t NXY = 1 << XYBITS;
+                const static std::uint32_t XYBITS = XBITS + YBITS;
+                const static std::uint32_t NXY = 1 << XYBITS;
 
-                const static uint32_t ZBITS = EDGEBITS - XYBITS;
-                const static uint32_t NZ = 1 << ZBITS;
-                const static uint32_t ZMASK = NZ - 1;
+                const static std::uint32_t ZBITS = EDGEBITS - XYBITS;
+                const static std::uint32_t NZ = 1 << ZBITS;
+                const static std::uint32_t ZMASK = NZ - 1;
 
-                const static uint32_t YZBITS = EDGEBITS - XBITS;
-                const static uint32_t NYZ = 1 << YZBITS;
-                const static uint32_t YZMASK = NYZ - 1;
+                const static std::uint32_t YZBITS = EDGEBITS - XBITS;
+                const static std::uint32_t NYZ = 1 << YZBITS;
+                const static std::uint32_t YZMASK = NYZ - 1;
 
-                const static uint32_t YZ1BITS = YZBITS < 15 ? YZBITS : 15;
-                const static uint32_t NYZ1 = 1 << YZ1BITS;
-                const static uint32_t YZ1MASK = NYZ1 - 1;
+                const static std::uint32_t YZ1BITS = YZBITS < 15 ? YZBITS : 15;
+                const static std::uint32_t NYZ1 = 1 << YZ1BITS;
+                const static std::uint32_t YZ1MASK = NYZ1 - 1;
 
-                const static uint32_t Z1BITS = YZ1BITS - YBITS;
-                const static uint32_t NZ1 = 1 << Z1BITS;
-                const static uint32_t Z1MASK = NZ1 - 1;
+                const static std::uint32_t Z1BITS = YZ1BITS - YBITS;
+                const static std::uint32_t NZ1 = 1 << Z1BITS;
+                const static std::uint32_t Z1MASK = NZ1 - 1;
 
-                const static uint32_t YZ2BITS = YZBITS < 11 ? YZBITS : 11;
-                const static uint32_t NYZ2 = 1 << YZ2BITS;
-                const static uint32_t YZ2MASK = NYZ2 - 1;
+                const static std::uint32_t YZ2BITS = YZBITS < 11 ? YZBITS : 11;
+                const static std::uint32_t NYZ2 = 1 << YZ2BITS;
+                const static std::uint32_t YZ2MASK = NYZ2 - 1;
 
-                const static uint32_t Z2BITS = YZ2BITS - YBITS;
-                const static uint32_t NZ2 = 1 << Z2BITS;
-                const static uint32_t Z2MASK = NZ2 - 1;
+                const static std::uint32_t Z2BITS = YZ2BITS - YBITS;
+                const static std::uint32_t NZ2 = 1 << Z2BITS;
+                const static std::uint32_t Z2MASK = NZ2 - 1;
 
-                const static uint32_t YZZBITS = YZBITS + ZBITS;
-                const static uint32_t YZZ1BITS = YZ1BITS + ZBITS;
+                const static std::uint32_t YZZBITS = YZBITS + ZBITS;
+                const static std::uint32_t YZZ1BITS = YZ1BITS + ZBITS;
 
-                const static uint8_t COMPRESSROUND = EDGEBITS <= 15 ? 0 : (EDGEBITS < 30 ? 14 : 22);
-                const static uint8_t EXPANDROUND = EDGEBITS < 30 ? COMPRESSROUND : 8;
+                const static std::uint8_t COMPRESSROUND = EDGEBITS <= 15 ? 0 : (EDGEBITS < 30 ? 14 : 22);
+                const static std::uint8_t EXPANDROUND = EDGEBITS < 30 ? COMPRESSROUND : 8;
 
-                const static uint8_t BIGSIZE = EDGEBITS <= 15 ? 4 : 5;
-                const static uint8_t BIGSIZE0 = EDGEBITS < 30 ? 4 : BIGSIZE;
-                const static uint8_t SMALLSIZE = BIGSIZE;
-                const static uint8_t BIGGERSIZE = EDGEBITS < 30 ? BIGSIZE : BIGSIZE + 1;
+                const static std::uint8_t BIGSIZE = EDGEBITS <= 15 ? 4 : 5;
+                const static std::uint8_t BIGSIZE0 = EDGEBITS < 30 ? 4 : BIGSIZE;
+                const static std::uint8_t SMALLSIZE = BIGSIZE;
+                const static std::uint8_t BIGGERSIZE = EDGEBITS < 30 ? BIGSIZE : BIGSIZE + 1;
 
-                const static uint32_t BIGSLOTBITS = BIGSIZE * 8;
-                const static uint32_t SMALLSLOTBITS = SMALLSIZE * 8;
-                const static uint64_t BIGSLOTMASK = (1ULL << BIGSLOTBITS) - 1ULL;
-                const static uint64_t SMALLSLOTMASK = (1ULL << SMALLSLOTBITS) - 1ULL;
-                const static uint32_t BIGSLOTBITS0 = BIGSIZE0 * 8;
-                const static uint64_t BIGSLOTMASK0 = (1ULL << BIGSLOTBITS0) - 1ULL;
+                const static std::uint32_t BIGSLOTBITS = BIGSIZE * 8;
+                const static std::uint32_t SMALLSLOTBITS = SMALLSIZE * 8;
+                const static std::uint64_t BIGSLOTMASK = (1ULL << BIGSLOTBITS) - 1ULL;
+                const static std::uint64_t SMALLSLOTMASK = (1ULL << SMALLSLOTBITS) - 1ULL;
+                const static std::uint32_t BIGSLOTBITS0 = BIGSIZE0 * 8;
+                const static std::uint64_t BIGSLOTMASK0 = (1ULL << BIGSLOTBITS0) - 1ULL;
 
-                const static uint32_t NONYZBITS = BIGSLOTBITS0 - YZBITS;
-                const static uint32_t NNONYZ = 1 << NONYZBITS;
+                const static std::uint32_t NONYZBITS = BIGSLOTBITS0 - YZBITS;
+                const static std::uint32_t NNONYZ = 1 << NONYZBITS;
 
-                const static uint32_t NTRIMMEDZ = NZ * TRIMFRAC256 / 256;
-                const static uint32_t ZBUCKETSLOTS = NZ + NZ * BIGEPS;
-                const static uint32_t ZBUCKETSIZE = ZBUCKETSLOTS * BIGSIZE0;
-                const static uint32_t TBUCKETSIZE = ZBUCKETSLOTS * BIGSIZE;
+                const static std::uint32_t NTRIMMEDZ = NZ * TRIMFRAC256 / 256;
+                const static std::uint32_t ZBUCKETSLOTS = NZ + NZ * BIGEPS;
+                const static std::uint32_t ZBUCKETSIZE = ZBUCKETSLOTS * BIGSIZE0;
+                const static std::uint32_t TBUCKETSIZE = ZBUCKETSLOTS * BIGSIZE;
 
                 const static bool NEEDSYNC = BIGSIZE0 == 4 && EDGEBITS > 27;
 
                 // grow with cube root of size, hardly affected by trimming
-                // const static uint32_t CUCKOO_SIZE = 2 * NX * NYZ2;
-                const static uint32_t CUCKOO_SIZE = 2 * NX * NYZ2;
+                // const static std::uint32_t CUCKOO_SIZE = 2 * NX * NYZ2;
+                const static std::uint32_t CUCKOO_SIZE = 2 * NX * NYZ2;
             };
 
-        template <uint8_t EDGEBITS, uint8_t XBITS, uint32_t BUCKETSIZE>
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS, std::uint32_t BUCKETSIZE>
             struct zbucket {
                 using P = Params<EDGEBITS, XBITS>;
-                uint32_t size;
-                const static uint32_t RENAMESIZE = 2 * P::NZ2 + 2 * (P::COMPRESSROUND ? P::NZ1 : 0);
+                std::uint32_t size;
+                const static std::uint32_t RENAMESIZE = 2 * P::NZ2 + 2 * (P::COMPRESSROUND ? P::NZ1 : 0);
                 union alignas(16) {
-                    uint8_t bytes[BUCKETSIZE];
+                    std::uint8_t bytes[BUCKETSIZE];
                     struct {
-                        uint32_t words[BUCKETSIZE / sizeof(uint32_t) - RENAMESIZE];
-                        uint32_t renameu1[P::NZ2];
-                        uint32_t renamev1[P::NZ2];
-                        uint32_t renameu[P::COMPRESSROUND ? P::NZ1 : 0];
-                        uint32_t renamev[P::COMPRESSROUND ? P::NZ1 : 0];
+                        std::uint32_t words[BUCKETSIZE / sizeof(std::uint32_t) - RENAMESIZE];
+                        std::uint32_t renameu1[P::NZ2];
+                        std::uint32_t renamev1[P::NZ2];
+                        std::uint32_t renameu[P::COMPRESSROUND ? P::NZ1 : 0];
+                        std::uint32_t renamev[P::COMPRESSROUND ? P::NZ1 : 0];
                     };
                 };
-                uint32_t setsize(uint8_t const* end)
+                std::uint32_t setsize(std::uint8_t const* end)
                 {
                     size = end - bytes;
                     assert(size <= BUCKETSIZE);
@@ -243,44 +239,44 @@ namespace merit
                 }
             };
 
-        template <uint8_t EDGEBITS, uint8_t XBITS, uint32_t BUCKETSIZE>
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS, std::uint32_t BUCKETSIZE>
             using yzbucket = zbucket<EDGEBITS, XBITS, BUCKETSIZE>[Params<EDGEBITS, XBITS>::NY];
 
-        template <uint8_t EDGEBITS, uint8_t XBITS, uint32_t BUCKETSIZE>
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS, std::uint32_t BUCKETSIZE>
             using matrix = yzbucket<EDGEBITS, XBITS, BUCKETSIZE>[Params<EDGEBITS, XBITS>::NX];
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS, uint32_t BUCKETSIZE>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS, std::uint32_t BUCKETSIZE>
             struct indexer {
                 using P = Params<EDGEBITS, XBITS>;
 
                 offset_t index[P::NX];
 
-                void matrixv(const uint32_t y)
+                void matrixv(const std::uint32_t y)
                 {
                     const yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* foo = 0;
-                    for (uint32_t x = 0; x < P::NX; x++)
-                        index[x] = foo[x][y].bytes - (uint8_t*)foo;
+                    for (std::uint32_t x = 0; x < P::NX; x++)
+                        index[x] = foo[x][y].bytes - (std::uint8_t*)foo;
                 }
-                offset_t storev(yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* buckets, const uint32_t y)
+                offset_t storev(yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* buckets, const std::uint32_t y)
                 {
-                    uint8_t const* base = (uint8_t*)buckets;
+                    std::uint8_t const* base = (std::uint8_t*)buckets;
                     offset_t sumsize = 0;
-                    for (uint32_t x = 0; x < P::NX; x++) {
+                    for (std::uint32_t x = 0; x < P::NX; x++) {
                         sumsize += buckets[x][y].setsize(base + index[x]);
                     }
                     return sumsize;
                 }
-                void matrixu(const uint32_t x)
+                void matrixu(const std::uint32_t x)
                 {
                     const yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* foo = 0;
-                    for (uint32_t y = 0; y < P::NY; y++)
-                        index[y] = foo[x][y].bytes - (uint8_t*)foo;
+                    for (std::uint32_t y = 0; y < P::NY; y++)
+                        index[y] = foo[x][y].bytes - (std::uint8_t*)foo;
                 }
-                offset_t storeu(yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* buckets, const uint32_t x)
+                offset_t storeu(yzbucket<EDGEBITS, XBITS, BUCKETSIZE>* buckets, const std::uint32_t x)
                 {
-                    uint8_t const* base = (uint8_t*)buckets;
+                    std::uint8_t const* base = (std::uint8_t*)buckets;
                     offset_t sumsize = 0;
-                    for (uint32_t y = 0; y < P::NY; y++)
+                    for (std::uint32_t y = 0; y < P::NY; y++)
                         sumsize += buckets[x][y].setsize(base + index[y]);
                     return sumsize;
                 }
@@ -291,20 +287,20 @@ namespace merit
 
         // break circular reference with forward declaration
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
             class edgetrimmer;
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
             class solver_ctx;
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
-            void etworker(edgetrimmer<offset_t, EDGEBITS, XBITS>* et, uint32_t id)
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
+            void etworker(edgetrimmer<offset_t, EDGEBITS, XBITS>* et, std::uint32_t id)
             {
                 et->trimmer(id);
             }
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
-            void matchworker(solver_ctx<offset_t, EDGEBITS, XBITS>* solver, uint32_t id)
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
+            void matchworker(solver_ctx<offset_t, EDGEBITS, XBITS>* solver, std::uint32_t id)
             {
                 solver->matchUnodes(id);
             }
@@ -315,17 +311,17 @@ namespace merit
                 return a > b ? a : b;
             }
 
-        template <uint8_t EDGEBITS, uint8_t XBITS>
-            using zbucket8 = uint8_t[2 * max(Params<EDGEBITS, XBITS>::NZ, Params<EDGEBITS, XBITS>::NYZ1)];
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
+            using zbucket8 = std::uint8_t[2 * max(Params<EDGEBITS, XBITS>::NZ, Params<EDGEBITS, XBITS>::NYZ1)];
 
-        template <uint8_t EDGEBITS, uint8_t XBITS>
-            using zbucket16 = uint16_t[Params<EDGEBITS, XBITS>::NTRIMMEDZ];
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
+            using zbucket16 = std::uint16_t[Params<EDGEBITS, XBITS>::NTRIMMEDZ];
 
-        template <uint8_t EDGEBITS, uint8_t XBITS>
-            using zbucket32 = uint32_t[Params<EDGEBITS, XBITS>::NTRIMMEDZ];
+        template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
+            using zbucket32 = std::uint32_t[Params<EDGEBITS, XBITS>::NTRIMMEDZ];
 
         // maintains set of trimmable edges
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
             class edgetrimmer
             {
                 public:
@@ -346,23 +342,23 @@ namespace merit
                     zbucket16P* tzs;
                     zbucket8P* tdegs;
                     offset_t* tcounts;
-                    uint8_t threads;
+                    std::uint8_t threads;
                     ctpl::thread_pool& pool;
-                    uint32_t nTrims;
+                    std::uint32_t nTrims;
                     Barrier* barry;
 
                     using BIGTYPE0 = offset_t;
 
-                    void touch(uint8_t* p, const offset_t n)
+                    void touch(std::uint8_t* p, const offset_t n)
                     {
                         for (offset_t i = 0; i < n; i += 4096)
-                            *(uint32_t*)(p + i) = 0;
+                            *(std::uint32_t*)(p + i) = 0;
                     }
 
                     edgetrimmer(
                             ctpl::thread_pool& poolIn,
                             size_t threadsIn,
-                            const uint32_t nTrimsIn) : pool{poolIn}, nTrims{nTrimsIn}
+                            const std::uint32_t nTrimsIn) : pool{poolIn}, nTrims{nTrimsIn}
                     {
                         assert(sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>) == P::NX * sizeof(yzbucketZ));
                         assert(sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>) == P::NX * sizeof(yzbucketZ));
@@ -370,9 +366,9 @@ namespace merit
                         threads = threadsIn;
 
                         buckets = new yzbucketZ[P::NX];
-                        touch((uint8_t*)buckets, sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>));
+                        touch((std::uint8_t*)buckets, sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>));
                         tbuckets = new yzbucketT[threads];
-                        touch((uint8_t*)tbuckets, threads * sizeof(yzbucketT));
+                        touch((std::uint8_t*)tbuckets, threads * sizeof(yzbucketT));
 
                         tedges = new zbucket32P[threads];
                         tdegs = new zbucket8P[threads];
@@ -394,7 +390,7 @@ namespace merit
                     offset_t count() const
                     {
                         offset_t cnt = 0;
-                        for (uint32_t t = 0; t < threads; t++)
+                        for (std::uint32_t t = 0; t < threads; t++)
                             cnt += tcounts[t];
                         return cnt;
                     }
@@ -403,26 +399,26 @@ namespace merit
 
                     template <int x, int i>
                         void store(
-                                uint8_t const* base,
-                                uint32_t& ux,
+                                std::uint8_t const* base,
+                                std::uint32_t& ux,
                                 indexerZ& dst,
-                                uint32_t last[],
-                                const uint32_t edge,
+                                std::uint32_t last[],
+                                const std::uint32_t edge,
                                 __m256i v,
                                 __m256i w)
                         {
                             if (!P::NEEDSYNC) {
                                 ux = _mm256_extract_epi32(v, x);
-                                *(uint64_t*)(base + dst.index[ux]) = _mm256_extract_epi64(w, i % 4);
+                                *(std::uint64_t*)(base + dst.index[ux]) = _mm256_extract_epi64(w, i % 4);
                                 dst.index[ux] += P::BIGSIZE0;
                             } else {
-                                uint32_t zz = _mm256_extract_epi32(w, x);
+                                std::uint32_t zz = _mm256_extract_epi32(w, x);
 
                                 if (i || likely(zz)) {
                                     ux = _mm256_extract_epi32(v, x);
                                     for (; unlikely(last[ux] + P::NNONYZ <= edge + i); last[ux] += P::NNONYZ, dst.index[ux] += P::BIGSIZE0)
-                                        *(uint32_t*)(base + dst.index[ux]) = 0;
-                                    *(uint32_t*)(base + dst.index[ux]) = zz;
+                                        *(std::uint32_t*)(base + dst.index[ux]) = 0;
+                                    *(std::uint32_t*)(base + dst.index[ux]) = zz;
                                     dst.index[ux] += P::BIGSIZE0;
                                     last[ux] = edge + i;
                                 }
@@ -430,17 +426,17 @@ namespace merit
                         }
 #endif
 
-                    void genUnodes(const uint32_t id, const uint32_t uorv)
+                    void genUnodes(const std::uint32_t id, const std::uint32_t uorv)
                     {
-                        uint32_t last[P::NX];
+                        std::uint32_t last[P::NX];
 
-                        uint8_t const* base = (uint8_t*)buckets;
+                        std::uint8_t const* base = (std::uint8_t*)buckets;
                         indexerZ dst;
-                        const uint32_t starty = P::NY * id / threads;
-                        const uint32_t endy = P::NY * (id + 1) / threads;
+                        const std::uint32_t starty = P::NY * id / threads;
+                        const std::uint32_t endy = P::NY * (id + 1) / threads;
 
-                        uint32_t edge = starty << P::YZBITS;
-                        uint32_t endedge = edge + P::NYZ;
+                        std::uint32_t edge = starty << P::YZBITS;
+                        std::uint32_t endedge = edge + P::NYZ;
 
 #if NSIPHASH == 8
                         static const __m256i vxmask = {P::XMASK, P::XMASK, P::XMASK, P::XMASK};
@@ -451,22 +447,22 @@ namespace merit
                                 sip_keys.k1 ^ 0x646f72616e646f6dULL,
                                 sip_keys.k0 ^ 0x736f6d6570736575ULL);
                         __m256i v0, v1, v2, v3, v4, v5, v6, v7;
-                        const uint32_t e2 = 2 * edge + uorv;
+                        const std::uint32_t e2 = 2 * edge + uorv;
                         __m256i vpacket0 = _mm256_set_epi64x(e2 + 6, e2 + 4, e2 + 2, e2 + 0);
                         __m256i vpacket1 = _mm256_set_epi64x(e2 + 14, e2 + 12, e2 + 10, e2 + 8);
                         static const __m256i vpacketinc = {16, 16, 16, 16};
-                        uint64_t e1 = edge;
+                        std::uint64_t e1 = edge;
                         __m256i vhi0 = _mm256_set_epi64x((e1 + 3) << P::YZBITS, (e1 + 2) << P::YZBITS, (e1 + 1) << P::YZBITS, (e1 + 0) << P::YZBITS);
                         __m256i vhi1 = _mm256_set_epi64x((e1 + 7) << P::YZBITS, (e1 + 6) << P::YZBITS, (e1 + 5) << P::YZBITS, (e1 + 4) << P::YZBITS);
                         static const __m256i vhiinc = {8 << P::YZBITS, 8 << P::YZBITS, 8 << P::YZBITS, 8 << P::YZBITS};
 #endif
 
                         offset_t sumsize = 0;
-                        for (uint32_t my = starty; my < endy; my++, endedge += P::NYZ) {
+                        for (std::uint32_t my = starty; my < endy; my++, endedge += P::NYZ) {
                             dst.matrixv(my);
 
                             if (P::NEEDSYNC) {
-                                for (uint32_t x = 0; x < P::NX; x++) {
+                                for (std::uint32_t x = 0; x < P::NX; x++) {
                                     last[x] = edge;
                                 }
                             }
@@ -476,8 +472,8 @@ namespace merit
                                 // node       XXXXXX     YYYYYY    ZZZZZ
 
 #if NSIPHASH == 1
-                                const uint32_t node = _sipnode(&sip_keys, P::EDGEMASK, edge, uorv);
-                                const uint32_t ux = node >> P::YZBITS;
+                                const std::uint32_t node = _sipnode(&sip_keys, P::EDGEMASK, edge, uorv);
+                                const std::uint32_t ux = node >> P::YZBITS;
                                 const BIGTYPE0 zz = (BIGTYPE0)edge << P::YZBITS | (node & P::YZMASK);
 
                                 if (!P::NEEDSYNC) {
@@ -488,8 +484,8 @@ namespace merit
                                 } else {
                                     if (zz) {
                                         for (; unlikely(last[ux] + P::NNONYZ <= edge); last[ux] += P::NNONYZ, dst.index[ux] += P::BIGSIZE0)
-                                            *(uint32_t*)(base + dst.index[ux]) = 0;
-                                        *(uint32_t*)(base + dst.index[ux]) = zz;
+                                            *(std::uint32_t*)(base + dst.index[ux]) = 0;
+                                        *(std::uint32_t*)(base + dst.index[ux]) = zz;
                                         dst.index[ux] += P::BIGSIZE0;
                                         last[ux] = edge;
                                     }
@@ -528,7 +524,7 @@ namespace merit
                                 vhi0 = _mm256_add_epi64(vhi0, vhiinc);
                                 vhi1 = _mm256_add_epi64(vhi1, vhiinc);
 
-                                uint32_t ux;
+                                std::uint32_t ux;
 
                                 store<0, 0>(base, ux, dst, last, edge, v1, v0);
                                 store<2, 1>(base, ux, dst, last, edge, v1, v0);
@@ -544,9 +540,9 @@ namespace merit
                             }
 
                             if (P::NEEDSYNC) {
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                     for (; last[ux] < endedge - P::NNONYZ; last[ux] += P::NNONYZ) {
-                                        *(uint32_t*)(base + dst.index[ux]) = 0;
+                                        *(std::uint32_t*)(base + dst.index[ux]) = 0;
                                         dst.index[ux] += P::BIGSIZE0;
                                     }
                                 }
@@ -559,7 +555,7 @@ namespace merit
 
                     // Porcess butckets and discard nodes with one edge for it (means it won't be in a cycle)
                     // Generate new paired nodes for remaining nodes generated in genUnodes step
-                    void genVnodes(const uint32_t id, const uint32_t uorv)
+                    void genVnodes(const std::uint32_t id, const std::uint32_t uorv)
                     {
 #if NSIPHASH == 8
                         static const __m256i vxmask = {P::XMASK, P::XMASK, P::XMASK, P::XMASK};
@@ -573,23 +569,23 @@ namespace merit
                         __m256i v0, v1, v2, v3, v4, v5, v6, v7;
 #endif
 
-                        static const uint32_t NONDEGBITS = std::min(40u, 2 * P::YZBITS) - P::ZBITS; // 28
-                        static const uint32_t NONDEGMASK = (1 << NONDEGBITS) - 1;
+                        static const std::uint32_t NONDEGBITS = std::min(40u, 2 * P::YZBITS) - P::ZBITS; // 28
+                        static const std::uint32_t NONDEGMASK = (1 << NONDEGBITS) - 1;
                         indexerZ dst;
                         indexerT small;
 
                         offset_t sumsize = 0;
-                        uint8_t const* base = (uint8_t*)buckets;
-                        uint8_t const* small0 = (uint8_t*)tbuckets[id];
-                        const uint32_t startux = P::NX * id / threads;
-                        const uint32_t endux = P::NX * (id + 1) / threads;
+                        std::uint8_t const* base = (std::uint8_t*)buckets;
+                        std::uint8_t const* small0 = (std::uint8_t*)tbuckets[id];
+                        const std::uint32_t startux = P::NX * id / threads;
+                        const std::uint32_t endux = P::NX * (id + 1) / threads;
 
-                        for (uint32_t ux = startux; ux < endux; ux++) { // matrix x == ux
+                        for (std::uint32_t ux = startux; ux < endux; ux++) { // matrix x == ux
                             small.matrixu(0);
-                            for (uint32_t my = 0; my < P::NY; my++) {
-                                uint32_t edge = my << P::YZBITS;
-                                uint8_t* readbig = buckets[ux][my].bytes;
-                                uint8_t const* endreadbig = readbig + buckets[ux][my].size;
+                            for (std::uint32_t my = 0; my < P::NY; my++) {
+                                std::uint32_t edge = my << P::YZBITS;
+                                std::uint8_t* readbig = buckets[ux][my].bytes;
+                                std::uint8_t const* endreadbig = readbig + buckets[ux][my].size;
                                 for (; readbig < endreadbig; readbig += P::BIGSIZE0) {
                                     // bit     39/31..21     20..13    12..0
                                     // read         edge     UYYYYY    UZZZZ   within UX partition
@@ -603,52 +599,52 @@ namespace merit
                                         }
                                     }
                                     // restore edge generated in genUnodes
-                                    edge += ((uint32_t)(e >> P::YZBITS) - edge) & (P::NNONYZ - 1);
-                                    const uint32_t uy = (e >> P::ZBITS) & P::YMASK;
+                                    edge += ((std::uint32_t)(e >> P::YZBITS) - edge) & (P::NNONYZ - 1);
+                                    const std::uint32_t uy = (e >> P::ZBITS) & P::YMASK;
                                     // bit         39..13     12..0
                                     // write         edge     UZZZZ   within UX UY partition
-                                    *(uint64_t*)(small0 + small.index[uy]) = ((uint64_t)edge << P::ZBITS) | (e & P::ZMASK);
+                                    *(std::uint64_t*)(small0 + small.index[uy]) = ((std::uint64_t)edge << P::ZBITS) | (e & P::ZMASK);
                                     small.index[uy] += P::SMALLSIZE;
                                 }
                             }
 
                             // counts of zz's for this ux
-                            uint8_t* degs = tdegs[id];
+                            std::uint8_t* degs = tdegs[id];
                             small.storeu(tbuckets + id, 0);
                             dst.matrixu(ux);
-                            for (uint32_t uy = 0; uy < P::NY; uy++) {
+                            for (std::uint32_t uy = 0; uy < P::NY; uy++) {
                                 memset(degs, 0xff, P::NZ);
-                                uint8_t *readsmall = tbuckets[id][uy].bytes, *endreadsmall = readsmall + tbuckets[id][uy].size;
+                                std::uint8_t *readsmall = tbuckets[id][uy].bytes, *endreadsmall = readsmall + tbuckets[id][uy].size;
 
-                                for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += P::SMALLSIZE) {
-                                    degs[*(uint32_t*)rdsmall & P::ZMASK]++;
+                                for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += P::SMALLSIZE) {
+                                    degs[*(std::uint32_t*)rdsmall & P::ZMASK]++;
                                 }
 
-                                uint16_t* zs = tzs[id];
-                                uint32_t* edges0;
+                                std::uint16_t* zs = tzs[id];
+                                std::uint32_t* edges0;
                                 edges0 = tedges[id]; // list of nodes with 2+ edges
-                                uint32_t *edges = edges0, edge = 0;
+                                std::uint32_t *edges = edges0, edge = 0;
 
-                                for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += P::SMALLSIZE) {
+                                for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += P::SMALLSIZE) {
                                     // bit         39..13     12..0
                                     // read          edge     UZZZZ    sorted by UY within UX partition
-                                    const uint64_t e = *(uint64_t*)rdsmall;
+                                    const std::uint64_t e = *(std::uint64_t*)rdsmall;
 
                                     edge += ((e >> P::ZBITS) - edge) & NONDEGMASK;
                                     *edges = edge;
-                                    const uint32_t z = e & P::ZMASK;
+                                    const std::uint32_t z = e & P::ZMASK;
                                     *zs = z;
 
                                     // check if array of ZZs counts (degs[]) has value not equal to 0 (means we have one edge for that node)
                                     // if it's the only edge, then it would be rewritten in zs and edges arrays in next iteration (skipped)
-                                    const uint32_t delta = degs[z] ? 1 : 0;
+                                    const std::uint32_t delta = degs[z] ? 1 : 0;
                                     edges += delta;
                                     zs += delta;
                                 }
                                 assert(edges - edges0 < P::NTRIMMEDZ);
-                                const uint16_t* readz = tzs[id];
-                                const uint32_t* readedge = edges0;
-                                int64_t uy34 = (int64_t)uy << P::YZZBITS;
+                                const std::uint16_t* readz = tzs[id];
+                                const std::uint32_t* readedge = edges0;
+                                std::int64_t uy34 = (std::int64_t)uy << P::YZZBITS;
 
 #if NSIPHASH == 8
                                 const __m256i vuy34 = {uy34, uy34, uy34, uy34};
@@ -664,9 +660,9 @@ namespace merit
                                     v6 = _mm256_permute4x64_epi64(vinit, 0xAA);
 
                                     vpacket0 = _mm256_slli_epi64(_mm256_cvtepu32_epi64(*(__m128i*)readedge), 1) | vuorv;
-                                    vhi0 = vuy34 | _mm256_slli_epi64(_mm256_cvtepu16_epi64(_mm_set_epi64x(0, *(uint64_t*)readz)), P::YZBITS);
+                                    vhi0 = vuy34 | _mm256_slli_epi64(_mm256_cvtepu16_epi64(_mm_set_epi64x(0, *(std::uint64_t*)readz)), P::YZBITS);
                                     vpacket1 = _mm256_slli_epi64(_mm256_cvtepu32_epi64(*(__m128i*)(readedge + 4)), 1) | vuorv;
-                                    vhi1 = vuy34 | _mm256_slli_epi64(_mm256_cvtepu16_epi64(_mm_set_epi64x(0, *(uint64_t*)(readz + 4))), P::YZBITS);
+                                    vhi1 = vuy34 | _mm256_slli_epi64(_mm256_cvtepu16_epi64(_mm_set_epi64x(0, *(std::uint64_t*)(readz + 4))), P::YZBITS);
 
                                     v3 = XOR(v3, vpacket0);
                                     v7 = XOR(v7, vpacket1);
@@ -688,10 +684,10 @@ namespace merit
                                     v0 = vhi0 | (v0 & vyzmask);
                                     v4 = vhi1 | (v4 & vyzmask);
 
-                                    uint32_t vx;
+                                    std::uint32_t vx;
 #define STORE(i, v, x, w)                                                \
                                     vx = _mm256_extract_epi32(v, x);                                     \
-                                    *(uint64_t*)(base + dst.index[vx]) = _mm256_extract_epi64(w, i % 4); \
+                                    *(std::uint64_t*)(base + dst.index[vx]) = _mm256_extract_epi64(w, i % 4); \
                                     dst.index[vx] += P::BIGSIZE;
                                     STORE(0, v1, 0, v0);
                                     STORE(1, v1, 2, v0);
@@ -705,15 +701,15 @@ namespace merit
 #endif
 
                                 for (; readedge < edges; readedge++, readz++) { // process up to 7 leftover edges if NSIPHASH==8
-                                    const uint32_t node = _sipnode(&sip_keys, P::EDGEMASK, *readedge, uorv);
-                                    const uint32_t vx = node >> P::YZBITS; // & XMASK;
+                                    const std::uint32_t node = _sipnode(&sip_keys, P::EDGEMASK, *readedge, uorv);
+                                    const std::uint32_t vx = node >> P::YZBITS; // & XMASK;
 
                                     // bit        39..34    33..21     20..13     12..0
                                     // write      UYYYYY    UZZZZZ     VYYYYY     VZZZZ   within VX partition
                                     // prev bucket info generated in genUnodes is overwritten here,
                                     // as we store U and V nodes in one value (Yz and Zs; Xs are indices in a matrix)
                                     // edge is discarded here, as we do not need it anymore
-                                    *(uint64_t*)(base + dst.index[vx]) = uy34 | ((uint64_t)*readz << P::YZBITS) | (node & P::YZMASK);
+                                    *(std::uint64_t*)(base + dst.index[vx]) = uy34 | ((std::uint64_t)*readz << P::YZBITS) | (node & P::YZMASK);
                                     dst.index[vx] += P::BIGSIZE;
                                 }
                             }
@@ -722,72 +718,68 @@ namespace merit
                         tcounts[id] = sumsize / P::BIGSIZE;
                     }
 
-                    template <uint32_t SRCSIZE, uint32_t DSTSIZE, bool TRIMONV>
-                        void trimedges(const uint32_t id, const uint32_t round)
+                    template <std::uint32_t SRCSIZE, std::uint32_t DSTSIZE, bool TRIMONV>
+                        void trimedges(const std::uint32_t id, const std::uint32_t round)
                         {
-                            const uint32_t SRCSLOTBITS = std::min(SRCSIZE * 8, 2 * P::YZBITS);
-                            const uint64_t SRCSLOTMASK = (1ULL << SRCSLOTBITS) - 1ULL;
-                            const uint32_t SRCPREFBITS = SRCSLOTBITS - P::YZBITS;
-                            const uint32_t SRCPREFMASK = (1 << SRCPREFBITS) - 1;
-                            const uint32_t DSTSLOTBITS = std::min(DSTSIZE * 8, 2 * P::YZBITS);
-                            const uint64_t DSTSLOTMASK = (1ULL << DSTSLOTBITS) - 1ULL;
-                            const uint32_t DSTPREFBITS = DSTSLOTBITS - P::YZZBITS;
-                            const uint32_t DSTPREFMASK = (1 << DSTPREFBITS) - 1;
+                            const std::uint32_t SRCSLOTBITS = std::min(SRCSIZE * 8, 2 * P::YZBITS);
+                            const std::uint64_t SRCSLOTMASK = (1ULL << SRCSLOTBITS) - 1ULL;
+                            const std::uint32_t SRCPREFBITS = SRCSLOTBITS - P::YZBITS;
+                            const std::uint32_t SRCPREFMASK = (1 << SRCPREFBITS) - 1;
+                            const std::uint32_t DSTSLOTBITS = std::min(DSTSIZE * 8, 2 * P::YZBITS);
+                            const std::uint64_t DSTSLOTMASK = (1ULL << DSTSLOTBITS) - 1ULL;
+                            const std::uint32_t DSTPREFBITS = DSTSLOTBITS - P::YZZBITS;
+                            const std::uint32_t DSTPREFMASK = (1 << DSTPREFBITS) - 1;
                             indexerZ dst;
                             indexerT small;
 
                             offset_t sumsize = 0;
-                            uint8_t const* base = (uint8_t*)buckets;
-                            uint8_t const* small0 = (uint8_t*)tbuckets[id];
-                            const uint32_t startvx = P::NY * id / threads;
-                            const uint32_t endvx = P::NY * (id + 1) / threads;
-                            for (uint32_t vx = startvx; vx < endvx; vx++) {
+                            std::uint8_t const* base = (std::uint8_t*)buckets;
+                            std::uint8_t const* small0 = (std::uint8_t*)tbuckets[id];
+                            const std::uint32_t startvx = P::NY * id / threads;
+                            const std::uint32_t endvx = P::NY * (id + 1) / threads;
+                            for (std::uint32_t vx = startvx; vx < endvx; vx++) {
                                 small.matrixu(0);
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
-                                    uint32_t uxyz = ux << P::YZBITS;
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
+                                    std::uint32_t uxyz = ux << P::YZBITS;
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    const uint8_t *readbig = zb.bytes, *endreadbig = readbig + zb.size;
+                                    const std::uint8_t *readbig = zb.bytes, *endreadbig = readbig + zb.size;
                                     for (; readbig < endreadbig; readbig += SRCSIZE) {
                                         // bit        39..34    33..21     20..13     12..0
                                         // write      UYYYYY    UZZZZZ     VYYYYY     VZZZZ   within VX partition
-                                        const uint64_t e = *(uint64_t*)readbig & SRCSLOTMASK;
-                                        uxyz += ((uint32_t)(e >> P::YZBITS) - uxyz) & SRCPREFMASK;
-                                        const uint32_t vy = (e >> P::ZBITS) & P::YMASK;
+                                        const std::uint64_t e = *(std::uint64_t*)readbig & SRCSLOTMASK;
+                                        uxyz += ((std::uint32_t)(e >> P::YZBITS) - uxyz) & SRCPREFMASK;
+                                        const std::uint32_t vy = (e >> P::ZBITS) & P::YMASK;
                                         // bit     41/39..34    33..26     25..13     12..0
                                         // write      UXXXXX    UYYYYY     UZZZZZ     VZZZZ   within VX VY partition
-                                        *(uint64_t*)(small0 + small.index[vy]) = ((uint64_t)uxyz << P::ZBITS) | (e & P::ZMASK);
+                                        *(std::uint64_t*)(small0 + small.index[vy]) = ((std::uint64_t)uxyz << P::ZBITS) | (e & P::ZMASK);
                                         uxyz &= ~P::ZMASK;
                                         small.index[vy] += DSTSIZE;
                                     }
                                     if (unlikely(uxyz >> P::YZBITS != ux)) {
-                                        printf("OOPS3: id %d vx %d ux %d UXY %x\n", id, vx, ux, uxyz);
-                                        exit(0);
+                                        assert(false);
                                     }
                                 }
-                                uint8_t* degs = tdegs[id];
+                                std::uint8_t* degs = tdegs[id];
                                 small.storeu(tbuckets + id, 0);
                                 TRIMONV ? dst.matrixv(vx) : dst.matrixu(vx);
-                                for (uint32_t vy = 0; vy < P::NY; vy++) {
-                                    const uint64_t vy34 = (uint64_t)vy << P::YZZBITS;
+                                for (std::uint32_t vy = 0; vy < P::NY; vy++) {
+                                    const std::uint64_t vy34 = (std::uint64_t)vy << P::YZZBITS;
                                     memset(degs, 0xff, P::NZ);
-                                    uint8_t *readsmall = tbuckets[id][vy].bytes, *endreadsmall = readsmall + tbuckets[id][vy].size;
-                                    for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += DSTSIZE)
-                                        degs[*(uint32_t*)rdsmall & P::ZMASK]++;
-                                    uint32_t ux = 0;
-                                    for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += DSTSIZE) {
+                                    std::uint8_t *readsmall = tbuckets[id][vy].bytes, *endreadsmall = readsmall + tbuckets[id][vy].size;
+                                    for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += DSTSIZE)
+                                        degs[*(std::uint32_t*)rdsmall & P::ZMASK]++;
+                                    std::uint32_t ux = 0;
+                                    for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += DSTSIZE) {
                                         // bit     41/39..34    33..26     25..13     12..0
                                         // read       UXXXXX    UYYYYY     UZZZZZ     VZZZZ   within VX VY partition
                                         // bit        39..37    36..30     29..15     14..0      with XBITS==YBITS==7
                                         // read       UXXXXX    UYYYYY     UZZZZZ     VZZZZ   within VX VY partition
-                                        const uint64_t e = *(uint64_t*)rdsmall & DSTSLOTMASK;
-                                        ux += ((uint32_t)(e >> P::YZZBITS) - ux) & DSTPREFMASK;
+                                        const std::uint64_t e = *(std::uint64_t*)rdsmall & DSTSLOTMASK;
+                                        ux += ((std::uint32_t)(e >> P::YZZBITS) - ux) & DSTPREFMASK;
                                         // bit    41/39..34    33..21     20..13     12..0
                                         // write     VYYYYY    VZZZZZ     UYYYYY     UZZZZ   within UX partition
-                                        *(uint64_t*)(base + dst.index[ux]) = vy34 | ((e & P::ZMASK) << P::YZBITS) | ((e >> P::ZBITS) & P::YZMASK);
+                                        *(std::uint64_t*)(base + dst.index[ux]) = vy34 | ((e & P::ZMASK) << P::YZBITS) | ((e >> P::ZBITS) & P::YZMASK);
                                         dst.index[ux] += degs[e & P::ZMASK] ? DSTSIZE : 0;
-                                    }
-                                    if (unlikely(ux >> DSTPREFBITS != P::XMASK >> DSTPREFBITS)) {
-                                        printf("OOPS4: id %d vx %x ux %x vs %x\n", id, vx, ux, P::XMASK);
                                     }
                                 }
                                 sumsize += TRIMONV ? dst.storev(buckets, vx) : dst.storeu(buckets, vx);
@@ -795,98 +787,97 @@ namespace merit
                             tcounts[id] = sumsize / DSTSIZE;
                         }
 
-                    template <uint32_t SRCSIZE, uint32_t DSTSIZE, bool TRIMONV>
-                        void trimrename(const uint32_t id, const uint32_t round)
+                    template <std::uint32_t SRCSIZE, std::uint32_t DSTSIZE, bool TRIMONV>
+                        void trimrename(const std::uint32_t id, const std::uint32_t round)
                         {
-                            const uint32_t SRCSLOTBITS = std::min(SRCSIZE * 8, (TRIMONV ? P::YZBITS : P::YZ1BITS) + P::YZBITS);
-                            const uint64_t SRCSLOTMASK = (1ULL << SRCSLOTBITS) - 1ULL;
-                            const uint32_t SRCPREFBITS = SRCSLOTBITS - P::YZBITS;
-                            const uint32_t SRCPREFMASK = (1 << SRCPREFBITS) - 1;
-                            const uint32_t SRCPREFBITS2 = SRCSLOTBITS - P::YZZBITS;
-                            const uint32_t SRCPREFMASK2 = (1 << SRCPREFBITS2) - 1;
+                            const std::uint32_t SRCSLOTBITS = std::min(SRCSIZE * 8, (TRIMONV ? P::YZBITS : P::YZ1BITS) + P::YZBITS);
+                            const std::uint64_t SRCSLOTMASK = (1ULL << SRCSLOTBITS) - 1ULL;
+                            const std::uint32_t SRCPREFBITS = SRCSLOTBITS - P::YZBITS;
+                            const std::uint32_t SRCPREFMASK = (1 << SRCPREFBITS) - 1;
+                            const std::uint32_t SRCPREFBITS2 = SRCSLOTBITS - P::YZZBITS;
+                            const std::uint32_t SRCPREFMASK2 = (1 << SRCPREFBITS2) - 1;
                             indexerZ dst;
                             indexerT small;
-                            static uint32_t maxnnid = 0;
+                            static std::uint32_t maxnnid = 0;
 
                             offset_t sumsize = 0;
-                            uint8_t const* base = (uint8_t*)buckets;
-                            uint8_t const* small0 = (uint8_t*)tbuckets[id];
-                            const uint32_t startvx = P::NY * id / threads;
-                            const uint32_t endvx = P::NY * (id + 1) / threads;
-                            for (uint32_t vx = startvx; vx < endvx; vx++) {
+                            std::uint8_t const* base = (std::uint8_t*)buckets;
+                            std::uint8_t const* small0 = (std::uint8_t*)tbuckets[id];
+                            const std::uint32_t startvx = P::NY * id / threads;
+                            const std::uint32_t endvx = P::NY * (id + 1) / threads;
+                            for (std::uint32_t vx = startvx; vx < endvx; vx++) {
                                 small.matrixu(0);
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
-                                    uint32_t uyz = 0;
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
+                                    std::uint32_t uyz = 0;
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    const uint8_t *readbig = zb.bytes, *endreadbig = readbig + zb.size;
+                                    const std::uint8_t *readbig = zb.bytes, *endreadbig = readbig + zb.size;
                                     for (; readbig < endreadbig; readbig += SRCSIZE) {
                                         // bit        39..37    36..22     21..15     14..0
                                         // write      UYYYYY    UZZZZZ     VYYYYY     VZZZZ   within VX partition  if TRIMONV
                                         // bit            36...22     21..15     14..0
                                         // write          VYYYZZ'     UYYYYY     UZZZZ   within UX partition  if !TRIMONV
-                                        const uint64_t e = *(uint64_t*)readbig & SRCSLOTMASK;
+                                        const std::uint64_t e = *(std::uint64_t*)readbig & SRCSLOTMASK;
                                         if (TRIMONV)
-                                            uyz += ((uint32_t)(e >> P::YZBITS) - uyz) & SRCPREFMASK;
+                                            uyz += ((std::uint32_t)(e >> P::YZBITS) - uyz) & SRCPREFMASK;
                                         else
                                             uyz = e >> P::YZBITS;
-                                        const uint32_t vy = (e >> P::ZBITS) & P::YMASK;
+                                        const std::uint32_t vy = (e >> P::ZBITS) & P::YMASK;
                                         // bit        39..37    36..30     29..15     14..0
                                         // write      UXXXXX    UYYYYY     UZZZZZ     VZZZZ   within VX VY partition  if TRIMONV
                                         // bit            36...30     29...15     14..0
                                         // write          VXXXXXX     VYYYZZ'     UZZZZ   within UX UY partition  if !TRIMONV
-                                        *(uint64_t*)(small0 + small.index[vy]) = ((uint64_t)(ux << (TRIMONV ? P::YZBITS : P::YZ1BITS) | uyz) << P::ZBITS) | (e & P::ZMASK);
+                                        *(std::uint64_t*)(small0 + small.index[vy]) = ((std::uint64_t)(ux << (TRIMONV ? P::YZBITS : P::YZ1BITS) | uyz) << P::ZBITS) | (e & P::ZMASK);
                                         if (TRIMONV)
                                             uyz &= ~P::ZMASK;
                                         small.index[vy] += SRCSIZE;
                                     }
                                 }
-                                uint16_t* degs = (uint16_t*)tdegs[id];
+                                std::uint16_t* degs = (std::uint16_t*)tdegs[id];
                                 small.storeu(tbuckets + id, 0);
                                 TRIMONV ? dst.matrixv(vx) : dst.matrixu(vx);
-                                uint32_t newnodeid = 0;
-                                uint32_t* renames = TRIMONV ? buckets[0][vx].renamev : buckets[vx][0].renameu;
-                                uint32_t* endrenames = renames + P::NZ1;
-                                for (uint32_t vy = 0; vy < P::NY; vy++) {
+                                std::uint32_t newnodeid = 0;
+                                std::uint32_t* renames = TRIMONV ? buckets[0][vx].renamev : buckets[vx][0].renameu;
+                                std::uint32_t* endrenames = renames + P::NZ1;
+                                for (std::uint32_t vy = 0; vy < P::NY; vy++) {
                                     memset(degs, 0xff, 2 * P::NZ);
-                                    uint8_t *readsmall = tbuckets[id][vy].bytes, *endreadsmall = readsmall + tbuckets[id][vy].size;
-                                    for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += SRCSIZE)
-                                        degs[*(uint32_t*)rdsmall & P::ZMASK]++;
-                                    uint32_t ux = 0;
-                                    uint32_t nrenames = 0;
-                                    for (uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += SRCSIZE) {
+                                    std::uint8_t *readsmall = tbuckets[id][vy].bytes, *endreadsmall = readsmall + tbuckets[id][vy].size;
+                                    for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += SRCSIZE)
+                                        degs[*(std::uint32_t*)rdsmall & P::ZMASK]++;
+                                    std::uint32_t ux = 0;
+                                    std::uint32_t nrenames = 0;
+                                    for (std::uint8_t* rdsmall = readsmall; rdsmall < endreadsmall; rdsmall += SRCSIZE) {
                                         // bit        39..37    36..30     29..15     14..0
                                         // read       UXXXXX    UYYYYY     UZZZZZ     VZZZZ   within VX VY partition  if TRIMONV
                                         // bit            36...30     29...15     14..0
                                         // read           VXXXXXX     VYYYZZ'     UZZZZ   within UX UY partition  if !TRIMONV
-                                        const uint64_t e = *(uint64_t*)rdsmall & SRCSLOTMASK;
+                                        const std::uint64_t e = *(std::uint64_t*)rdsmall & SRCSLOTMASK;
                                         if (TRIMONV)
-                                            ux += ((uint32_t)(e >> P::YZZBITS) - ux) & SRCPREFMASK2;
+                                            ux += ((std::uint32_t)(e >> P::YZZBITS) - ux) & SRCPREFMASK2;
                                         else
                                             ux = e >> P::YZZ1BITS;
-                                        const uint32_t vz = e & P::ZMASK;
-                                        uint16_t vdeg = degs[vz];
+                                        const std::uint32_t vz = e & P::ZMASK;
+                                        std::uint16_t vdeg = degs[vz];
                                         if (vdeg) {
                                             if (vdeg < 32) {
                                                 degs[vz] = vdeg = 32 + nrenames++;
                                                 *renames++ = vy << P::ZBITS | vz;
                                                 if (renames == endrenames) {
-                                                    endrenames += (TRIMONV ? sizeof(yzbucketZ) : sizeof(zbucketZ)) / sizeof(uint32_t);
+                                                    endrenames += (TRIMONV ? sizeof(yzbucketZ) : sizeof(zbucketZ)) / sizeof(std::uint32_t);
                                                     renames = endrenames - P::NZ1;
                                                 }
                                             }
                                             // bit       36..22     21..15     14..0
                                             // write     VYYZZ'     UYYYYY     UZZZZ   within UX partition  if TRIMONV
                                             if (TRIMONV)
-                                                *(uint64_t*)(base + dst.index[ux]) = ((uint64_t)(newnodeid + vdeg - 32) << P::YZBITS) | ((e >> P::ZBITS) & P::YZMASK);
+                                                *(std::uint64_t*)(base + dst.index[ux]) = ((std::uint64_t)(newnodeid + vdeg - 32) << P::YZBITS) | ((e >> P::ZBITS) & P::YZMASK);
                                             else
-                                                *(uint32_t*)(base + dst.index[ux]) = ((newnodeid + vdeg - 32) << P::YZ1BITS) | ((e >> P::ZBITS) & P::YZ1MASK);
+                                                *(std::uint32_t*)(base + dst.index[ux]) = ((newnodeid + vdeg - 32) << P::YZ1BITS) | ((e >> P::ZBITS) & P::YZ1MASK);
                                             dst.index[ux] += DSTSIZE;
                                         }
                                     }
                                     newnodeid += nrenames;
                                     if (TRIMONV && unlikely(ux >> SRCPREFBITS2 != P::XMASK >> SRCPREFBITS2)) {
-                                        printf("OOPS6: id %d vx %d vy %d ux %x vs %x\n", id, vx, vy, ux, P::XMASK);
-                                        exit(0);
+                                        assert(false);
                                     }
                                 }
                                 if (newnodeid > maxnnid)
@@ -898,88 +889,88 @@ namespace merit
                         }
 
                     template <bool TRIMONV>
-                        void trimedges1(const uint32_t id, const uint32_t round)
+                        void trimedges1(const std::uint32_t id, const std::uint32_t round)
                         {
                             indexerZ dst;
 
                             offset_t sumsize = 0;
-                            uint8_t* degs = tdegs[id];
-                            uint8_t const* base = (uint8_t*)buckets;
-                            const uint32_t startvx = P::NY * id / threads;
-                            const uint32_t endvx = P::NY * (id + 1) / threads;
-                            for (uint32_t vx = startvx; vx < endvx; vx++) {
+                            std::uint8_t* degs = tdegs[id];
+                            std::uint8_t const* base = (std::uint8_t*)buckets;
+                            const std::uint32_t startvx = P::NY * id / threads;
+                            const std::uint32_t endvx = P::NY * (id + 1) / threads;
+                            for (std::uint32_t vx = startvx; vx < endvx; vx++) {
                                 TRIMONV ? dst.matrixv(vx) : dst.matrixu(vx);
                                 memset(degs, 0xff, P::NYZ1);
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(uint32_t);
+                                    std::uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(std::uint32_t);
                                     for (; readbig < endreadbig; readbig++)
                                         degs[*readbig & P::YZ1MASK]++;
                                 }
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(uint32_t);
+                                    std::uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(std::uint32_t);
                                     for (; readbig < endreadbig; readbig++) {
                                         // bit       29..22    21..15     14..7     6..0
                                         // read      UYYYYY    UZZZZ'     VYYYY     VZZ'   within VX partition
-                                        const uint32_t e = *readbig;
-                                        const uint32_t vyz = e & P::YZ1MASK;
+                                        const std::uint32_t e = *readbig;
+                                        const std::uint32_t vyz = e & P::YZ1MASK;
                                         // bit       29..22    21..15     14..7     6..0
                                         // write     VYYYYY    VZZZZ'     UYYYY     UZZ'   within UX partition
-                                        *(uint32_t*)(base + dst.index[ux]) = (vyz << P::YZ1BITS) | (e >> P::YZ1BITS);
-                                        dst.index[ux] += degs[vyz] ? sizeof(uint32_t) : 0;
+                                        *(std::uint32_t*)(base + dst.index[ux]) = (vyz << P::YZ1BITS) | (e >> P::YZ1BITS);
+                                        dst.index[ux] += degs[vyz] ? sizeof(std::uint32_t) : 0;
                                     }
                                 }
                                 sumsize += TRIMONV ? dst.storev(buckets, vx) : dst.storeu(buckets, vx);
                             }
-                            tcounts[id] = sumsize / sizeof(uint32_t);
+                            tcounts[id] = sumsize / sizeof(std::uint32_t);
                         }
 
                     template <bool TRIMONV>
-                        void trimrename1(const uint32_t id, const uint32_t round)
+                        void trimrename1(const std::uint32_t id, const std::uint32_t round)
                         {
                             indexerZ dst;
-                            static uint32_t maxnnid = 0;
+                            static std::uint32_t maxnnid = 0;
 
                             offset_t sumsize = 0;
-                            uint16_t* degs = (uint16_t*)tdegs[id];
-                            uint8_t const* base = (uint8_t*)buckets;
-                            const uint32_t startvx = P::NY * id / threads;
-                            const uint32_t endvx = P::NY * (id + 1) / threads;
-                            for (uint32_t vx = startvx; vx < endvx; vx++) {
+                            std::uint16_t* degs = (std::uint16_t*)tdegs[id];
+                            std::uint8_t const* base = (std::uint8_t*)buckets;
+                            const std::uint32_t startvx = P::NY * id / threads;
+                            const std::uint32_t endvx = P::NY * (id + 1) / threads;
+                            for (std::uint32_t vx = startvx; vx < endvx; vx++) {
                                 TRIMONV ? dst.matrixv(vx) : dst.matrixu(vx);
                                 memset(degs, 0xff, 2 * P::NYZ1);
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(uint32_t);
+                                    std::uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(std::uint32_t);
                                     for (; readbig < endreadbig; readbig++)
                                         degs[*readbig & P::YZ1MASK]++;
                                 }
-                                uint32_t newnodeid = 0;
-                                uint32_t* renames = TRIMONV ? buckets[0][vx].renamev1 : buckets[vx][0].renameu1;
-                                uint32_t* endrenames = renames + P::NZ2;
-                                for (uint32_t ux = 0; ux < P::NX; ux++) {
+                                std::uint32_t newnodeid = 0;
+                                std::uint32_t* renames = TRIMONV ? buckets[0][vx].renamev1 : buckets[vx][0].renameu1;
+                                std::uint32_t* endrenames = renames + P::NZ2;
+                                for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                     zbucketZ& zb = TRIMONV ? buckets[ux][vx] : buckets[vx][ux];
-                                    uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(uint32_t);
+                                    std::uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(std::uint32_t);
                                     for (; readbig < endreadbig; readbig++) {
                                         // bit       29...15     14...0
                                         // read      UYYYZZ'     VYYZZ'   within VX partition
-                                        const uint32_t e = *readbig;
-                                        const uint32_t vyz = e & P::YZ1MASK;
-                                        uint16_t vdeg = degs[vyz];
+                                        const std::uint32_t e = *readbig;
+                                        const std::uint32_t vyz = e & P::YZ1MASK;
+                                        std::uint16_t vdeg = degs[vyz];
                                         if (vdeg) {
                                             if (vdeg < 32) {
                                                 degs[vyz] = vdeg = 32 + newnodeid++;
                                                 *renames++ = vyz;
                                                 if (renames == endrenames) {
-                                                    endrenames += (TRIMONV ? sizeof(yzbucketZ) : sizeof(zbucketZ)) / sizeof(uint32_t);
+                                                    endrenames += (TRIMONV ? sizeof(yzbucketZ) : sizeof(zbucketZ)) / sizeof(std::uint32_t);
                                                     renames = endrenames - P::NZ2;
                                                 }
                                             }
                                             // bit       25...15     14...0
                                             // write     VYYZZZ"     UYYZZ'   within UX partition
-                                            *(uint32_t*)(base + dst.index[ux]) = ((vdeg - 32) << (TRIMONV ? P::YZ1BITS : P::YZ2BITS)) | (e >> P::YZ1BITS);
-                                            dst.index[ux] += sizeof(uint32_t);
+                                            *(std::uint32_t*)(base + dst.index[ux]) = ((vdeg - 32) << (TRIMONV ? P::YZ1BITS : P::YZ2BITS)) | (e >> P::YZ1BITS);
+                                            dst.index[ux] += sizeof(std::uint32_t);
                                         }
                                     }
                                 }
@@ -988,7 +979,7 @@ namespace merit
                                 sumsize += TRIMONV ? dst.storev(buckets, vx) : dst.storeu(buckets, vx);
                             }
                             assert(maxnnid < P::NYZ2);
-                            tcounts[id] = sumsize / sizeof(uint32_t);
+                            tcounts[id] = sumsize / sizeof(std::uint32_t);
                         }
 
                     void trim()
@@ -1011,12 +1002,12 @@ namespace merit
                         }
                     }
 
-                    void trimmer(uint32_t id)
+                    void trimmer(std::uint32_t id)
                     {
                         genUnodes(id, 0);
                         barry->Wait();
                         genVnodes(id, 1);
-                        for (uint32_t round = 2; round < nTrims - 2; round += 2) {
+                        for (std::uint32_t round = 2; round < nTrims - 2; round += 2) {
                             barry->Wait();
                             if (round < P::COMPRESSROUND) {
                                 if (round < P::EXPANDROUND)
@@ -1038,7 +1029,7 @@ namespace merit
                                 else
                                     trimedges<P::BIGGERSIZE, P::BIGGERSIZE, false>(id, round + 1);
                             } else if (round == P::COMPRESSROUND) {
-                                trimrename<P::BIGGERSIZE, sizeof(uint32_t), false>(id, round + 1);
+                                trimrename<P::BIGGERSIZE, sizeof(std::uint32_t), false>(id, round + 1);
                             } else
                                 trimedges1<false>(id, round + 1);
                         }
@@ -1051,10 +1042,10 @@ namespace merit
 
         int nonce_cmp(const void* a, const void* b)
         {
-            return *(uint32_t*)a - *(uint32_t*)b;
+            return *(std::uint32_t*)a - *(std::uint32_t*)b;
         }
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
             class solver_ctx
             {
                 public:
@@ -1066,22 +1057,22 @@ namespace merit
                     using yzbucketT = yzbucket<EDGEBITS, XBITS, P::TBUCKETSIZE>;
 
                     edgetrimmer<offset_t, EDGEBITS, XBITS>* trimmer;
-                    uint32_t* cuckoo = 0;
-                    std::vector<uint32_t> cycleus;
-                    std::vector<uint32_t> cyclevs;
+                    std::uint32_t* cuckoo = 0;
+                    std::vector<std::uint32_t> cycleus;
+                    std::vector<std::uint32_t> cyclevs;
                     std::bitset<P::NXY> uxymap;
-                    std::vector<uint32_t> sols; // concatanation of all proof's indices
+                    std::vector<std::uint32_t> sols; // concatanation of all proof's indices
                     ctpl::thread_pool& pool;
                     size_t threads;
-                    uint8_t proofSize;
+                    std::uint8_t proofSize;
 
                     solver_ctx(
                             ctpl::thread_pool& poolIn,
                             size_t threadsIn,
                             const char* header,
-                            const uint32_t headerlen,
-                            const uint32_t nTrims,
-                            const uint8_t proofSizeIn) : pool{poolIn}, threads{threadsIn}, proofSize{proofSizeIn}
+                            const std::uint32_t headerlen,
+                            const std::uint32_t nTrims,
+                            const std::uint8_t proofSizeIn) : pool{poolIn}, threads{threadsIn}, proofSize{proofSizeIn}
                     {
                         trimmer = new edgetrimmer<offset_t, EDGEBITS, XBITS>(pool, threadsIn, nTrims);
 
@@ -1098,25 +1089,25 @@ namespace merit
                         delete trimmer;
                     }
 
-                    uint64_t sharedbytes() const
+                    std::uint64_t sharedbytes() const
                     {
                         return sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>);
                     }
 
-                    uint32_t threadbytes() const
+                    std::uint32_t threadbytes() const
                     {
                         return sizeof(yzbucketT) + sizeof(zbucket8P) + sizeof(zbucket16P) + sizeof(zbucket32P);
                     }
 
-                    void recordedge(const uint32_t i, const uint32_t u2, const uint32_t v2)
+                    void recordedge(const std::uint32_t i, const std::uint32_t u2, const std::uint32_t v2)
                     {
-                        const uint32_t u1 = u2 / 2;
-                        const uint32_t ux = u1 >> P::YZ2BITS;
-                        uint32_t uyz = trimmer->buckets[ux][(u1 >> P::Z2BITS) & P::YMASK].renameu1[u1 & P::Z2MASK];
+                        const std::uint32_t u1 = u2 / 2;
+                        const std::uint32_t ux = u1 >> P::YZ2BITS;
+                        std::uint32_t uyz = trimmer->buckets[ux][(u1 >> P::Z2BITS) & P::YMASK].renameu1[u1 & P::Z2MASK];
                         assert(uyz < P::NYZ1);
-                        const uint32_t v1 = v2 / 2;
-                        const uint32_t vx = v1 >> P::YZ2BITS;
-                        uint32_t vyz = trimmer->buckets[(v1 >> P::Z2BITS) & P::YMASK][vx].renamev1[v1 & P::Z2MASK];
+                        const std::uint32_t v1 = v2 / 2;
+                        const std::uint32_t vx = v1 >> P::YZ2BITS;
+                        std::uint32_t vyz = trimmer->buckets[(v1 >> P::Z2BITS) & P::YMASK][vx].renamev1[v1 & P::Z2MASK];
                         assert(vyz < P::NYZ1);
 
                         if (P::COMPRESSROUND > 0) {
@@ -1124,17 +1115,17 @@ namespace merit
                             vyz = trimmer->buckets[vyz >> P::Z1BITS][vx].renamev[vyz & P::Z1MASK];
                         }
 
-                        const uint32_t u = ((ux << P::YZBITS) | uyz) << 1;
-                        const uint32_t v = ((vx << P::YZBITS) | vyz) << 1 | 1;
+                        const std::uint32_t u = ((ux << P::YZBITS) | uyz) << 1;
+                        const std::uint32_t v = ((vx << P::YZBITS) | vyz) << 1 | 1;
 
                         cycleus[i] = u / 2;
                         cyclevs[i] = v / 2;
                         uxymap[u / 2 >> P::ZBITS] = 1;
                     }
 
-                    void solution(const uint32_t* us, uint32_t nu, const uint32_t* vs, uint32_t nv)
+                    void solution(const std::uint32_t* us, std::uint32_t nu, const std::uint32_t* vs, std::uint32_t nv)
                     {
-                        uint32_t ni = 0;
+                        std::uint32_t ni = 0;
                         recordedge(ni++, *us, *vs);
                         while (nu--)
                             recordedge(ni++, us[(nu + 1) & ~1], us[nu | 1]); // u's in even position; v's in odd
@@ -1156,23 +1147,19 @@ namespace merit
                             j.wait();
                         }
 
-                        qsort(&sols[sols.size() - proofSize], proofSize, sizeof(uint32_t), nonce_cmp);
+                        qsort(&sols[sols.size() - proofSize], proofSize, sizeof(std::uint32_t), nonce_cmp);
                     }
 
-                    static const uint32_t CUCKOO_NIL = ~0;
+                    static const std::uint32_t CUCKOO_NIL = ~0;
 
-                    uint32_t path(uint32_t u, uint32_t* us) const
+                    std::uint32_t path(std::uint32_t u, std::uint32_t* us) const
                     {
-                        uint32_t nu, u0 = u;
+                        std::uint32_t nu, u0 = u;
                         for (nu = 0; u != CUCKOO_NIL; u = cuckoo[u]) {
                             if (nu >= MAXPATHLEN) {
                                 while (nu-- && us[nu] != u)
                                     ;
-                                if (!~nu)
-                                    printf("maximum path length exceeded\n");
-                                else
-                                    printf("illegal %4d-cycle from node %d\n", MAXPATHLEN - nu, u0);
-                                pthread_exit(NULL);
+                                break;
                             }
                             us[nu++] = u;
                         }
@@ -1181,28 +1168,28 @@ namespace merit
 
                     bool findcycles()
                     {
-                        uint32_t us[MAXPATHLEN], vs[MAXPATHLEN];
+                        std::uint32_t us[MAXPATHLEN], vs[MAXPATHLEN];
 
-                        for (uint32_t vx = 0; vx < P::NX; vx++) {
-                            for (uint32_t ux = 0; ux < P::NX; ux++) {
+                        for (std::uint32_t vx = 0; vx < P::NX; vx++) {
+                            for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                 zbucketZ& zb = trimmer->buckets[ux][vx];
-                                uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(uint32_t);
+                                std::uint32_t *readbig = zb.words, *endreadbig = readbig + zb.size / sizeof(std::uint32_t);
                                 for (; readbig < endreadbig; readbig++) {
                                     // bit        21..11     10...0
                                     // write      UYYZZZ'    VYYZZ'   within VX partition
-                                    const uint32_t e = *readbig;
-                                    const uint32_t uxyz = (ux << P::YZ2BITS) | (e >> P::YZ2BITS);
-                                    const uint32_t vxyz = (vx << P::YZ2BITS) | (e & P::YZ2MASK);
+                                    const std::uint32_t e = *readbig;
+                                    const std::uint32_t uxyz = (ux << P::YZ2BITS) | (e >> P::YZ2BITS);
+                                    const std::uint32_t vxyz = (vx << P::YZ2BITS) | (e & P::YZ2MASK);
 
-                                    const uint32_t u0 = uxyz << 1, v0 = (vxyz << 1) | 1;
+                                    const std::uint32_t u0 = uxyz << 1, v0 = (vxyz << 1) | 1;
                                     if (u0 != CUCKOO_NIL) {
-                                        uint32_t nu = path(u0, us);
-                                        uint32_t nv = path(v0, vs);
+                                        std::uint32_t nu = path(u0, us);
+                                        std::uint32_t nv = path(v0, vs);
                                         if (us[nu] == vs[nv]) {
-                                            const uint32_t min = nu < nv ? nu : nv;
+                                            const std::uint32_t min = nu < nv ? nu : nv;
                                             for (nu -= min, nv -= min; us[nu] != vs[nv]; nu++, nv++)
                                                 ;
-                                            const uint32_t len = nu + nv + 1;
+                                            const std::uint32_t len = nu + nv + 1;
                                             if (len == proofSize) {
                                                 solution(us, nu, vs, nv);
                                                 return true;
@@ -1226,21 +1213,21 @@ namespace merit
 
                     bool solve()
                     {
-                        assert((uint64_t)P::CUCKOO_SIZE * sizeof(uint32_t) <= trimmer->threads * sizeof(yzbucketT));
+                        assert((std::uint64_t)P::CUCKOO_SIZE * sizeof(std::uint32_t) <= trimmer->threads * sizeof(yzbucketT));
                         trimmer->trim();
-                        cuckoo = (uint32_t*)trimmer->tbuckets;
-                        memset(cuckoo, CUCKOO_NIL, P::CUCKOO_SIZE * sizeof(uint32_t));
+                        cuckoo = (std::uint32_t*)trimmer->tbuckets;
+                        memset(cuckoo, CUCKOO_NIL, P::CUCKOO_SIZE * sizeof(std::uint32_t));
 
                         return findcycles();
                     }
 
-                    void* matchUnodes(uint32_t threadId)
+                    void* matchUnodes(std::uint32_t threadId)
                     {
-                        const uint32_t starty = P::NY * threadId / trimmer->threads;
-                        const uint32_t endy = P::NY * (threadId + 1) / trimmer->threads;
+                        const std::uint32_t starty = P::NY * threadId / trimmer->threads;
+                        const std::uint32_t endy = P::NY * (threadId + 1) / trimmer->threads;
 
-                        uint32_t edge = starty << P::YZBITS;
-                        uint32_t endedge = edge + P::NYZ;
+                        std::uint32_t edge = starty << P::YZBITS;
+                        std::uint32_t endedge = edge + P::NYZ;
 
 #if NSIPHASH == 8
                         static const __m256i vnodemask = {P::EDGEMASK, P::EDGEMASK, P::EDGEMASK, P::EDGEMASK};
@@ -1250,20 +1237,20 @@ namespace merit
                                 trimmer->sip_keys.k1 ^ 0x646f72616e646f6dULL,
                                 trimmer->sip_keys.k0 ^ 0x736f6d6570736575ULL);
                         __m256i v0, v1, v2, v3, v4, v5, v6, v7;
-                        const uint32_t e2 = 2 * edge;
+                        const std::uint32_t e2 = 2 * edge;
                         __m256i vpacket0 = _mm256_set_epi64x(e2 + 6, e2 + 4, e2 + 2, e2 + 0);
                         __m256i vpacket1 = _mm256_set_epi64x(e2 + 14, e2 + 12, e2 + 10, e2 + 8);
                         static const __m256i vpacketinc = {16, 16, 16, 16};
 #endif
 
-                        for (uint32_t my = starty; my < endy; my++, endedge += P::NYZ) {
+                        for (std::uint32_t my = starty; my < endy; my++, endedge += P::NYZ) {
                             for (; edge < endedge; edge += NSIPHASH) {
                                 // bit        28..21     20..13    12..0
                                 // node       XXXXXX     YYYYYY    ZZZZZ
 #if NSIPHASH == 1
-                                const uint32_t nodeu = _sipnode(&trimmer->sip_keys, P::EDGEMASK, edge, 0);
+                                const std::uint32_t nodeu = _sipnode(&trimmer->sip_keys, P::EDGEMASK, edge, 0);
                                 if (uxymap[nodeu >> P::ZBITS]) {
-                                    for (uint32_t j = 0; j < proofSize; j++) {
+                                    for (std::uint32_t j = 0; j < proofSize; j++) {
                                         if (cycleus[j] == nodeu && cyclevs[j] == _sipnode(&trimmer->sip_keys, P::EDGEMASK, edge, 1)) {
                                             sols[sols.size() - proofSize + j] = edge;
                                         }
@@ -1303,12 +1290,12 @@ namespace merit
                                 v1 = _mm256_srli_epi64(v0, P::ZBITS);
                                 v5 = _mm256_srli_epi64(v4, P::ZBITS);
 
-                                uint32_t uxy;
+                                std::uint32_t uxy;
 #define MATCH(i, v, x, w)                                                                                  \
                                 uxy = _mm256_extract_epi32(v, x);                                                                      \
                                 if (uxymap[uxy]) {                                                                                     \
-                                    uint32_t u = _mm256_extract_epi32(w, x);                                                           \
-                                    for (uint32_t j = 0; j < proofSize; j++) {                                                         \
+                                    std::uint32_t u = _mm256_extract_epi32(w, x);                                                           \
+                                    for (std::uint32_t j = 0; j < proofSize; j++) {                                                         \
                                         if (cycleus[j] == u && cyclevs[j] == _sipnode(&trimmer->sip_keys, P::EDGEMASK, edge + i, 1)) { \
                                             sols[sols.size() - proofSize + j] = edge + i;                                              \
                                         }                                                                                              \
@@ -1332,12 +1319,12 @@ namespace merit
                     }
             };
 
-        template <typename offset_t, uint8_t EDGEBITS, uint8_t XBITS>
+        template <typename offset_t, std::uint8_t EDGEBITS, std::uint8_t XBITS>
             bool run(
                     const char* hex_header_hash,
                     size_t hex_header_hash_len,
-                    uint8_t proofSize,
-                    std::set<uint32_t>& cycle,
+                    std::uint8_t proofSize,
+                    std::set<std::uint32_t>& cycle,
                     size_t threads,
                     ctpl::thread_pool& pool)
             {
@@ -1345,7 +1332,7 @@ namespace merit
                 assert(hex_header_hash_len > 0);
                 assert(EDGEBITS >= MIN_EDGE_BITS && EDGEBITS <= MAX_EDGE_BITS);
 
-                uint32_t nTrims = EDGEBITS >= 30 ? 96 : 68;
+                std::uint32_t nTrims = EDGEBITS >= 30 ? 96 : 68;
 
                 solver_ctx<offset_t, EDGEBITS, XBITS> ctx{
                     pool,
@@ -1367,29 +1354,29 @@ namespace merit
         bool FindCycle(
                 const char* hex_header_hash,
                 size_t hex_header_hash_len,
-                uint8_t edgeBits,
-                uint8_t proofSize,
-                std::set<uint32_t>& cycle,
+                std::uint8_t edgeBits,
+                std::uint8_t proofSize,
+                std::set<std::uint32_t>& cycle,
                 size_t threads,
                 ctpl::thread_pool& pool)
         {
             switch (edgeBits) {
-                case 16: return run<uint32_t, 16u, 0u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 17: return run<uint32_t, 17u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 18: return run<uint32_t, 18u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 19: return run<uint32_t, 19u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 20: return run<uint32_t, 20u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 21: return run<uint32_t, 21u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 22: return run<uint32_t, 22u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 23: return run<uint32_t, 23u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 24: return run<uint32_t, 24u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 25: return run<uint32_t, 25u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 26: return run<uint32_t, 26u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 27: return run<uint32_t, 27u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 28: return run<uint32_t, 28u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 29: return run<uint32_t, 29u, 7u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 30: return run<uint64_t, 30u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 31: return run<uint64_t, 31u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 16: return run<std::uint32_t, 16u, 0u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 17: return run<std::uint32_t, 17u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 18: return run<std::uint32_t, 18u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 19: return run<std::uint32_t, 19u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 20: return run<std::uint32_t, 20u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 21: return run<std::uint32_t, 21u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 22: return run<std::uint32_t, 22u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 23: return run<std::uint32_t, 23u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 24: return run<std::uint32_t, 24u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 25: return run<std::uint32_t, 25u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 26: return run<std::uint32_t, 26u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 27: return run<std::uint32_t, 27u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 28: return run<std::uint32_t, 28u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 29: return run<std::uint32_t, 29u, 7u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 30: return run<std::uint64_t, 30u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 31: return run<std::uint64_t, 31u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
 
                 default:
                          std::stringstream s;
