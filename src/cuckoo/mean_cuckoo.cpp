@@ -306,13 +306,13 @@ namespace merit
             }
 
         template <typename T>
-            constexpr T& max(T& a, T& b)
+            constexpr T& cmax(T& a, T& b)
             {
                 return a > b ? a : b;
             }
 
         template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
-            using zbucket8 = std::uint8_t[2 * max(Params<EDGEBITS, XBITS>::NZ, Params<EDGEBITS, XBITS>::NYZ1)];
+            using zbucket8 = std::uint8_t[2 * cmax(Params<EDGEBITS, XBITS>::NZ, Params<EDGEBITS, XBITS>::NYZ1)];
 
         template <std::uint8_t EDGEBITS, std::uint8_t XBITS>
             using zbucket16 = std::uint16_t[Params<EDGEBITS, XBITS>::NTRIMMEDZ];
