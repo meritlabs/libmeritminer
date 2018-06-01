@@ -82,6 +82,47 @@ static inline void le32enc(void *pp, uint32_t x)
 }
 #endif
 
+#if defined(__linux__)
+// Linux 
+#include <endian.h>    // for htole32/64
+
+#elif defined(__APPLE__)
+// macOS
+#include <machine/endian.h>
+#include <libkern/OSByteOrder.h>
+#define htole32(x) OSSwapHostToLittleInt32(x)
+#define htole64(x) OSSwapHostToLittleInt64(x)
+
+#elif (defined(_WIN16) || defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+// Windows
+#include <winsock2.h>
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+#define htole32(x) (x)
+#define htole64(x) (x)
+#elif BYTE_ORDER == BIG_ENDIAN
+
+#define htole32(x) __builtin_bswap32(x)
+#define htole64(x) __builtin_bswap64(x)
+
+#else
+
+#error byte order not supported
+
+#endif
+
+#define __BYTE_ORDER    BYTE_ORDER
+#define __BIG_ENDIAN    BIG_ENDIAN
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __PDP_ENDIAN    PDP_ENDIAN
+
+#else
+// Nothing matched
+#error platform not supported
+
+#endif
+
 namespace merit
 {
     namespace util
