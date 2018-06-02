@@ -12,6 +12,11 @@ namespace merit
     Context* create_context();
     void delete_context(Context*);
 
+    void set_agent(
+            Context* c,
+            const char* software,
+            const char* version);
+
     bool connect_stratum(
             Context* c,
             const char* url,

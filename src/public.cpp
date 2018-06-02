@@ -62,6 +62,12 @@ namespace merit
         if(c) { delete c;}
     }
 
+    void set_agent(Context* c, const char* software, const char* version) 
+    {
+        assert(c);
+        c->stratum.set_agent(software, version);
+    }
+
     bool connect_stratum(
             Context* c,
             const char* url,
