@@ -76,8 +76,8 @@ namespace merit
 
         struct Stat
         {
-            std::chrono::system_clock::time_point start;
-            std::chrono::system_clock::time_point end;
+            std::chrono::high_resolution_clock::time_point start;
+            std::chrono::high_resolution_clock::time_point end;
             std::atomic<int> attempts;
             std::atomic<int> cycles;
             std::atomic<int> shares;

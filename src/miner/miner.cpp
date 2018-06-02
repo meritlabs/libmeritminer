@@ -43,6 +43,14 @@ namespace merit
         {
             const int CUCKOO_PROOF_SIZE = 42;
             const int MAX_STATS = 100;
+
+            bool work_same(const util::Work& a, const util::Work& b)
+            {
+                return std::equal(
+                        a.data.begin(),
+                        a.data.begin()+19,
+                        b.data.begin());
+            }
         }
 
         Stat::Stat()
@@ -90,16 +98,16 @@ namespace merit
 
         double Stat::cycles_per_second() const
         {
-            const double a = cycles;
+            const double c = cycles;
             const double s = seconds();
-            return s == 0 ? 0 : a / s;
+            return s == 0 ? 0 : c / s;
         }
 
         double Stat::shares_per_second() const
         {
-            const double a = shares;
+            const double h = shares;
             const double s = seconds();
-            return s == 0 ? 0 : a / s;
+            return s == 0 ? 0 : h / s;
         }
 
         Miner::Miner(
@@ -124,24 +132,34 @@ namespace merit
         void Miner::submit_job(const stratum::Job& j)
         {
             auto w = stratum::work_from_job(j);
+            util::MaybeWork prev_work;
             {
                 std::lock_guard<std::mutex> guard{_work_mutex};
+                prev_work = _next_work;
                 _next_work = w;
             }
 
             {
                 std::lock_guard<std::mutex> sguard{_stat_mutex};
-                if(_total_stats.start == std::chrono::system_clock::time_point{}) {
-                    _total_stats.start = std::chrono::system_clock::now();
+                if(_total_stats.start == std::chrono::high_resolution_clock::time_point{}) {
+                    _total_stats.start = std::chrono::high_resolution_clock::now();
                 }
 
-                if(_current_stat.start == std::chrono::system_clock::time_point{}) {
-                    _current_stat.start = std::chrono::system_clock::now();
+                if(!_next_work || !prev_work || work_same(*prev_work, *_next_work)) {
+                    return;
+                }
+
+                if(_current_stat.start == std::chrono::high_resolution_clock::time_point{}) {
+                    _current_stat.start = std::chrono::high_resolution_clock::now();
                 } else {
-                    _total_stats.end = std::chrono::system_clock::now();
+                    _total_stats.end = std::chrono::high_resolution_clock::now();
                     _current_stat.end = _total_stats.end;
 
                     auto current = _current_stat;
+
+                    _current_stat.attempts = 0;
+                    _current_stat.cycles = 0;
+                    _current_stat.shares = 0;
 
                     _stats.push_back(current);
                     if(_stats.size() > MAX_STATS) {
@@ -305,14 +323,9 @@ namespace merit
                     continue;
                 }
 
-                if(std::equal(
-                            prev_work.data.begin(),
-                            prev_work.data.begin()+19,
-                            work->data.begin())) {
+                if(work_same(prev_work, *work)) {
                     work->data[19] = ++n;
-
                 } else {
-                    std::cerr << "info: " << "(" << _id << ") got work: " << work->jobid << std::endl;
                     n =  0xffffffffU / _miner.total_workers() * _id;
                     work->data[19] = n;
                     prev_work = *work;
