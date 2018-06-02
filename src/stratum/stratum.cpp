@@ -87,6 +87,7 @@ namespace merit
                 const std::string& version)
         {
             _agent = software + "/" + version;
+            std::cerr << "setting agent to: " << _agent << std::endl;
         }
 
         bool set_socket_opts(asio::ip::tcp::socket& sock)
