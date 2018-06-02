@@ -754,7 +754,7 @@ namespace merit
                 diff /= 4294967296.0;
             }
 
-            uint64_t m = 4294901760.0 / diff;
+            uint64_t m = 2147450880.0 / diff;
 
             std::fill(target.begin(), target.end(), 0);
             target[k] = static_cast<uint32_t>(m);
