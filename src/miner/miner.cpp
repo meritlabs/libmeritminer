@@ -143,15 +143,11 @@ namespace merit
                 std::lock_guard<std::mutex> sguard{_stat_mutex};
                 if(_total_stats.start == std::chrono::high_resolution_clock::time_point{}) {
                     _total_stats.start = std::chrono::high_resolution_clock::now();
-                }
-
-                if(!_next_work || !prev_work || work_same(*prev_work, *_next_work)) {
-                    return;
-                }
-
-                if(_current_stat.start == std::chrono::high_resolution_clock::time_point{}) {
-                    _current_stat.start = std::chrono::high_resolution_clock::now();
                 } else {
+                    if(!_next_work || !prev_work || work_same(*prev_work, *_next_work)) {
+                        return;
+                    }
+
                     _total_stats.end = std::chrono::high_resolution_clock::now();
                     _current_stat.end = _total_stats.end;
 
