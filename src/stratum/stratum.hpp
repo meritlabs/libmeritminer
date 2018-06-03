@@ -120,7 +120,6 @@ namespace merit
                     Subscribed,
                     Authorizing,
                     Authorized,
-                    Method,
                 };
                 std::atomic<ConnState> _state;
 
