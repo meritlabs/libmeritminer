@@ -214,6 +214,13 @@ namespace merit
         void Client::disconnect()
         {
             std::lock_guard<std::mutex> guard{_sock_mutex};
+            _sockbuf.clear();
+            _next_diff = 0.0;
+            _xnonce1.clear();
+            _xnonce2_size = 0;
+            _job = Job{};
+            _new_job = false;
+
             _socket.close();
             _state = Disconnected;
         }
@@ -403,7 +410,7 @@ namespace merit
         {
             pt::ptree val;
             if(!parse_json(res, val)) {
-                std::cerr << "error: " << "error parsing stratum response" << std::endl;
+                std::cerr << "error parsing stratum response: " << res << std::endl;
                 return false;
             }
 
@@ -446,6 +453,8 @@ namespace merit
                     std::cerr << "error: " << "unable to execute client.show_message" << std::endl;
                     return false;
                 }
+            } else {
+                std::cerr << "unknown method: '" << *method << "' message: " << res << std::endl;
             }
 
             return true;
@@ -512,6 +521,10 @@ namespace merit
                 if(!recv(res)) {
                     std::cerr << "error: " << "error receiving" << std::endl;
                     throw std::runtime_error("error receiving");
+                }
+                if(_run_state == Running && _state == Disconnected) {
+                    std::cerr << "disconnected: " << std::endl;
+                    throw std::runtime_error("disconnected.");
                 }
                 if(!handle_command(res)) {
                     continue;
@@ -602,6 +615,7 @@ namespace merit
 
             if(!send(req.str())) {
                 std::cerr << "error: " << "Error submitting work: " << req.str() << std::endl;
+                disconnect();
             } else {
                 std::cerr << "info: " << "submitted work: " << req.str() << std::endl;
             }
@@ -681,6 +695,7 @@ namespace merit
                 return false;
             }
 
+            _xnonce1.clear();
             if(!util::parse_hex(*xnonce1, _xnonce1)) {
                 std::cerr << "error: " << "error parsing extranonce1" << std::endl;
             }
