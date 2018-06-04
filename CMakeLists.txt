@@ -7,6 +7,8 @@ project(libmeritminer)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
+set(CMAKE_CXX_STANDARD 14)
+
 #setup boost
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS system program_options thread REQUIRED)
@@ -17,7 +19,7 @@ set_target_properties(boost_system PROPERTIES IMPORTED_LOCATION "/usr/local/lib/
 add_library(boost_program_options STATIC IMPORTED)
 set_target_properties(boost_program_options PROPERTIES IMPORTED_LOCATION "/usr/local/lib/libboost_program_options.a")
 add_library(boost_thread STATIC IMPORTED)
-set_target_properties(boost_thread PROPERTIES IMPORTED_LOCATION "/usr/local/lib/libboost_thread.a")
+set_target_properties(boost_thread PROPERTIES IMPORTED_LOCATION "/usr/local/lib/libboost_thread-mt.a")
 
 include_directories(include)
 include_directories(src/)
@@ -30,7 +32,7 @@ include_directories(src/util)
 include_directories(src/PicoSHA2)
 add_definitions(-fPIC)
 
-add_library(meritminer STATIC 
+add_library(meritminer STATIC
     src/public.cpp
     src/cuckoo/miner.cpp
     src/cuckoo/mean_cuckoo.cpp
@@ -63,4 +65,4 @@ install(TARGETS merit-minerd meritminer
             ARCHIVE DESTINATION lib)
 install(FILES ${FAT_LIB} DESTINATION lib)
 include(CPack)
- 
+
