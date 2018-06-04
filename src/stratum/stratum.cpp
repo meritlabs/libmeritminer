@@ -523,7 +523,7 @@ namespace merit
                     throw std::runtime_error("error receiving");
                 }
                 if(_run_state == Running && _state == Disconnected) {
-                    std::cerr << "disconnected: " << std::endl;
+                    std::cerr << "error: disconnected: " << std::endl;
                     throw std::runtime_error("disconnected.");
                 }
                 if(!handle_command(res)) {
@@ -533,13 +533,13 @@ namespace merit
                 if(!reconnect()) {
                     std::cerr << "error: " << "failed to reconnect" << std::endl;
                     return false;
-                } else {
-                    std::cerr << "error: " << "reconnected!" << std::endl;
+                } else if(_run_state == Running) {
+                    std::cerr << "info: reconnected!" << std::endl;
                 }
             }
 
             _run_state = NotRunning;
-            std::cerr << "error: " << "stratum stopped." << std::endl;
+            std::cerr << "info: stratum stopped." << std::endl;
 
             return true;
         }
