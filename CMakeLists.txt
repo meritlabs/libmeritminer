@@ -32,7 +32,6 @@ add_definitions(-fPIC)
 
 add_library(meritminer STATIC 
     src/public.cpp
-    src/cuckoo/miner.cpp
     src/cuckoo/mean_cuckoo.cpp
     src/blake2/blake2b-ref.c
     src/stratum/stratum.cpp
