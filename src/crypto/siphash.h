@@ -18,7 +18,7 @@ namespace merit
 #define U8TO64_LE(p) ((p))
 
         // set siphash keys from 16 byte char array
-        void setkeys(siphash_keys *keys, const char *keybuf) {
+        inline void setkeys(siphash_keys *keys, const char *keybuf) {
             keys->k0 = htole64(((uint64_t *)keybuf)[0]);
             keys->k1 = htole64(((uint64_t *)keybuf)[1]);
         }
@@ -34,7 +34,7 @@ namespace merit
         } while(0)
 
         // SipHash-2-4 specialized to precomputed key and 8 byte nonces
-        uint64_t siphash24(const siphash_keys *keys, const uint64_t nonce) {
+        inline uint64_t siphash24(const siphash_keys *keys, const uint64_t nonce) {
             uint64_t v0 = keys->k0 ^ 0x736f6d6570736575ULL, v1 = keys->k1 ^ 0x646f72616e646f6dULL,
                      v2 = keys->k0 ^ 0x6c7967656e657261ULL, v3 = keys->k1 ^ 0x7465646279746573ULL ^ nonce;
             SIPROUND; SIPROUND;
@@ -45,12 +45,12 @@ namespace merit
         }
 
         // generate edge endpoint in cuckoo graph without partition bit
-        uint32_t _sipnode(const siphash_keys *keys, uint32_t mask, uint32_t nonce, uint32_t uorv)
+        inline uint32_t _sipnode(const siphash_keys *keys, uint32_t mask, uint32_t nonce, uint32_t uorv)
         {
             return siphash24(keys, 2 * nonce + uorv) & mask;
         }
 
-        uint32_t sipnode(const siphash_keys *keys, uint32_t mask, uint32_t nonce, uint32_t uorv)
+        inline uint32_t sipnode(const siphash_keys *keys, uint32_t mask, uint32_t nonce, uint32_t uorv)
         {
             auto node = _sipnode(keys, mask, nonce, uorv);
 

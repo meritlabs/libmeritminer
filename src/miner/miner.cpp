@@ -30,10 +30,30 @@
  */
 #include "miner/miner.hpp"
 #include "cuckoo/mean_cuckoo.h"
+#include "crypto/siphash.h"
+#include "blake2/blake2.h"
 
 #include<chrono>
 #include<iostream>
 #include<set>
+
+
+#ifdef CUDA_ENABLED
+
+using Cycle = std::set<uint32_t>;
+
+bool FindCycleOnCudaDevice(
+        uint64_t sip_k0, uint64_t sip_k1,
+        uint8_t edgebits,
+        uint8_t proof_size,
+        Cycle& cycle,
+        int device);
+
+int CudaDevices();
+
+#else
+int CudaDevices() { return 0;}
+#endif
 
 namespace merit
 {
@@ -51,6 +71,11 @@ namespace merit
                         a.data.begin()+19,
                         b.data.begin());
             }
+        }
+
+        int GpuDevices()
+        {
+            return ::CudaDevices();
         }
 
         Stat::Stat()
@@ -113,19 +138,27 @@ namespace merit
         Miner::Miner(
                 int workers,
                 int threads_per_worker,
+                int gpu_devices,
                 util::SubmitWorkFunc submit_work) :
             _submit_work{submit_work},
-            _pool{(workers * threads_per_worker) + workers}
+            _pool{(workers * threads_per_worker) + workers + gpu_devices}
         {
-            assert(workers >= 1);
-            assert(threads_per_worker >= 1);
+            gpu_devices = std::min(gpu_devices, GpuDevices());
+
+            assert(workers >= 0);
+            assert(threads_per_worker >= 0);
 
             _state = NotRunning;
             std::cerr << "info: " << "workers: " << workers << std::endl;
             std::cerr << "info: " << "threads per worker: " << threads_per_worker << std::endl;
+            std::cerr << "info: " << "gpu devices: " << gpu_devices << std::endl;
 
             for(int i = 0; i < workers; i++) {
-                _workers.emplace_back(i, threads_per_worker, _pool, *this);
+                _workers.emplace_back(i, threads_per_worker, false, _pool, *this);
+            }
+
+            for(int i = 0; i < gpu_devices; i++) {
+                _workers.emplace_back(i, threads_per_worker, true, _pool, *this);
             }
         }
 
@@ -261,11 +294,13 @@ namespace merit
         Worker::Worker(
                 int id,
                 int threads,
+                bool gpu_device,
                 ctpl::thread_pool& pool,
                 Miner& miner) :
             _state{NotRunning},
             _id{id},
             _threads{threads},
+            _gpu_device{gpu_device},
             _pool{pool},
             _miner{miner}
         {
@@ -354,6 +389,35 @@ namespace merit
 
                 uint8_t edgebits = work->data[20] >> 24;
 
+#if CUDA_ENABLED
+                bool found = false;
+                if(!_gpu_device) {
+                    found = cuckoo::FindCycle(
+                            hex_header_hash.data(),
+                            hex_header_hash.size(),
+                            edgebits,
+                            CUCKOO_PROOF_SIZE,
+                            cycle,
+                            _threads,
+                            _pool);
+                } else {
+                    crypto::siphash_keys keys;
+                    char hdrkey[32];
+                    blake2b(
+                            reinterpret_cast<void*>(hdrkey),
+                            sizeof(hdrkey),
+                            reinterpret_cast<const void*>(hex_header_hash.data()),
+                            hex_header_hash.size(), 0, 0);
+                    crypto::setkeys(&keys, hdrkey);
+
+                    found = FindCycleOnCudaDevice(
+                            keys.k0, keys.k1,
+                            edgebits,
+                            CUCKOO_PROOF_SIZE,
+                            cycle,
+                            _id);
+                }
+#else
                 bool found = cuckoo::FindCycle(
                         hex_header_hash.data(),
                         hex_header_hash.size(),
@@ -362,6 +426,7 @@ namespace merit
                         cycle,
                         _threads,
                         _pool);
+#endif
 
                 auto& stat = _miner.current_stat();
                 stat.attempts++;

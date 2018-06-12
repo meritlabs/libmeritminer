@@ -157,7 +157,7 @@ namespace merit
         c->stratum.stop();
     }
 
-    bool run_miner(Context* c, int workers, int threads_per_worker)
+    bool run_miner(Context* c, int workers, int threads_per_worker, int gpu_devices)
     try
     {
         assert(c);
@@ -174,6 +174,7 @@ namespace merit
         c->miner = std::make_unique<miner::Miner>(
                 workers,
                 threads_per_worker,
+                gpu_devices,
                 c->submit_work_func);
 
         std::cerr << "info: " << "starting miner..."<< std::endl; 
@@ -258,6 +259,11 @@ namespace merit
     int number_of_cores()
     {
         return std::thread::hardware_concurrency();
+    }
+
+    int number_of_gpus()
+    {
+        return miner::GpuDevices();
     }
 
     MinerStat to_public_stat(const miner::Stat& s)

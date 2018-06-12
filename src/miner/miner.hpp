@@ -47,6 +47,7 @@ namespace merit
 {
     namespace miner
     {
+        int GpuDevices();
 
         using MaybeStratumJob = boost::optional<stratum::Job>;
         class Miner;
@@ -56,7 +57,7 @@ namespace merit
                 enum State {Running, NotRunning};
 
                 Worker(const Worker& o);
-                Worker(int id, int threads, ctpl::thread_pool&, Miner&);
+                Worker(int id, int threads, bool gpu_device, ctpl::thread_pool&, Miner&);
 
             public:
 
@@ -68,6 +69,7 @@ namespace merit
                 std::atomic<State> _state;
                 int _id;
                 int _threads;
+                bool _gpu_device;
                 ctpl::thread_pool& _pool;
                 Miner& _miner;
         };
@@ -102,6 +104,7 @@ namespace merit
                 Miner(
                         int workers,
                         int threads_per_worker,
+                        int gpu_devices,
                         util::SubmitWorkFunc submit_work);
 
             public:

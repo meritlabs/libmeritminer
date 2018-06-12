@@ -55,7 +55,10 @@ int main(int argc, char** argv)
         ("help", "show the help message")
         ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
         ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
-        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The address to send mining rewards to.");
+        ("gpus",
+         po::value<int>()->default_value(merit::number_of_gpus()),
+         (merit::number_of_gpus() > 0 ? "The number of GPU devices to use." : "You do not have any compatible gpu devices."))
+        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
 
 
 
@@ -75,8 +78,11 @@ int main(int argc, char** argv)
 
     int cores;
     cores = vm["cores"].as<int>();
-    cores = std::max(1, cores);
+    cores = std::max(0, cores);
     auto utilization = determine_utilization(cores);
+
+    int gpu_devices = vm["gpus"].as<int>();
+    gpu_devices = std::max(0, std::min(gpu_devices, merit::number_of_gpus()));
 
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
@@ -86,7 +92,7 @@ int main(int argc, char** argv)
         return 1;
     }
     merit::run_stratum(c.get());
-    merit::run_miner(c.get(), utilization.first ,utilization.second);
+    merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
 
     int prev_graphs = 0;
     while(true) { 

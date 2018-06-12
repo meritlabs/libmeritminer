@@ -29,18 +29,29 @@ include_directories(src/miner)
 include_directories(src/util)
 include_directories(src/PicoSHA2)
 
+find_package(CUDA)
 
-add_library(meritminer STATIC 
-    src/public.cpp
-    src/cuckoo/gpu/kernel.cu
-    src/cuckoo/mean_cuckoo.cpp
-    src/blake2/blake2b-ref.c
-    src/stratum/stratum.cpp
-    src/miner/miner.cpp
-    src/util/util.cpp)
+if(CUDA_FOUND)
+    add_definitions(-DCUDA_ENABLED)
+    add_library(meritminer STATIC 
+        src/public.cpp
+        src/cuckoo/gpu/kernel.cu
+        src/cuckoo/mean_cuckoo.cpp
+        src/blake2/blake2b-ref.c
+        src/stratum/stratum.cpp
+        src/miner/miner.cpp
+        src/util/util.cpp)
+else()
+    add_library(meritminer STATIC 
+        src/public.cpp
+        src/cuckoo/mean_cuckoo.cpp
+        src/blake2/blake2b-ref.c
+        src/stratum/stratum.cpp
+        src/miner/miner.cpp
+        src/util/util.cpp)
+endif()
 
 target_compile_features(meritminer PUBLIC cxx_std_14)
-set_target_properties(meritminer PROPERTIES CUDA_SEPERABLE_COMPILATION ON)
 set_target_properties(meritminer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 set(FAT_LIB ${CMAKE_BINARY_DIR}/libfatmeritminer.a)
@@ -49,7 +60,7 @@ add_custom_target(combined
     COMMAND ar -x $<TARGET_FILE:boost_system>
     COMMAND ar -x $<TARGET_FILE:boost_program_options>
     COMMAND ar -x $<TARGET_FILE:boost_thread>
-    COMMAND ar -qcs ${FAT_LIB} *.o
+    COMMAND ar -qcs ${FAT_LIB} *.cu.o *.o
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DEPENDS meritminer boost_system boost_program_options boost_thread)
 add_library(fatmeritminer STATIC IMPORTED GLOBAL)
@@ -57,7 +68,7 @@ add_dependencies(fatmeritminer combined)
 set_target_properties(fatmeritminer PROPERTIES IMPORTED_LOCATION ${FAT_LIB})
 
 add_executable(merit-minerd src/minerd.cpp)
-target_link_libraries(merit-minerd fatmeritminer pthread)
+target_link_libraries(merit-minerd meritminer boost_system boost_program_options boost_thread pthread)
 set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
 
 install(TARGETS merit-minerd meritminer
