@@ -309,6 +309,7 @@ namespace merit
         Worker::Worker(const Worker& o) :
             _id{o._id},
             _threads{o._threads},
+            _gpu_device{o._gpu_device},
             _pool{o._pool},
             _miner{o._miner}
         {
