@@ -7,6 +7,8 @@ project(libmeritminer)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
+set(CMAKE_CXX_STANDARD 14)
+
 #setup boost
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS system program_options thread REQUIRED)
@@ -30,7 +32,7 @@ include_directories(src/util)
 include_directories(src/PicoSHA2)
 add_definitions(-fPIC)
 
-add_library(meritminer STATIC 
+add_library(meritminer STATIC
     src/public.cpp
     src/cuckoo/mean_cuckoo.cpp
     src/blake2/blake2b-ref.c
@@ -80,4 +82,4 @@ install(TARGETS merit-minerd meritminer
             ARCHIVE DESTINATION lib)
 install(FILES ${FAT_LIB} DESTINATION lib)
 include(CPack)
- 
+
