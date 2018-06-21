@@ -6,6 +6,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "device_functions.h"
+#include "exceptions.h"
 #include <xmmintrin.h>
 #include <algorithm>
 #include <stdio.h>
@@ -813,8 +814,12 @@ struct Run
         size_t total_device_mem = 0;
 
         auto status = cudaSetDevice(device);
+        std::ostringstream err_msg;
+
         if (status != cudaSuccess) {
-            return false;
+            err_msg << "An error occurred while trying to allocate memory for CUDA device: ";
+            err_msg << cudaGetErrorString(status);
+            throw CudaSetDeviceException(err_msg.str());
         }
 
         if(buffer_a[device] == nullptr) {
@@ -822,35 +827,50 @@ struct Run
 
             status = cudaMalloc((void**)&buffer_a[device], buffer_size);
             if (status != cudaSuccess) {
-                return false;
+                err_msg << "An error while allocating memory for buffer_a: ";
+                err_msg << cudaGetErrorString(status);
+
+                throw CudaMemoryAllocationException(err_msg.str());
             }
         }
 
         if(buffer_b[device] == nullptr) {
             status = cudaMalloc((void**)&buffer_b[device], buffer_size_2);
             if (status != cudaSuccess) {
-                return false;
+                err_msg << "An error while allocating memory for buffer_b: ";
+                err_msg << cudaGetErrorString(status);
+
+                throw CudaMemoryAllocationException(err_msg.str());
             }
         }
 
         if(indexes_e[device] == nullptr) {
             status = cudaMalloc((void**)&indexes_e[device], indexes_size);
             if (status != cudaSuccess) {
-                return false;
+                err_msg << "An error while allocating memory for indexes_e: ";
+                err_msg << cudaGetErrorString(status);
+
+                throw CudaMemoryAllocationException(err_msg.str());
             }
         }
 
         if(indexes_e2[device] == nullptr) {
             status = cudaMalloc((void**)&indexes_e2[device], indexes_size);
             if (status != cudaSuccess) {
-                return false;
+                err_msg << "An error while allocating memory for indexes_e2: ";
+                err_msg << cudaGetErrorString(status);
+
+                throw CudaMemoryAllocationException(err_msg.str());
             }
         }
 
         if(recovery[device] == nullptr) {
             status = cudaMalloc((void**)&recovery[device], proof_size*8);
             if (status != cudaSuccess) {
-                return false;
+                err_msg << "An error while allocating memory for recovery: ";
+                err_msg << cudaGetErrorString(status);
+
+                throw CudaMemoryAllocationException(err_msg.str());
             }
         }
 

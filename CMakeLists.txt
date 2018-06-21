@@ -36,6 +36,7 @@ if(CUDA_FOUND)
     add_library(meritminer STATIC 
         src/public.cpp
         src/cuckoo/gpu/kernel.cu
+        src/cuckoo/gpu/exceptions.h
         src/cuckoo/mean_cuckoo.cpp
         src/blake2/blake2b-ref.c
         src/stratum/stratum.cpp
