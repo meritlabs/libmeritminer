@@ -104,7 +104,7 @@ namespace merit
                 bool recv(std::string&);
                 void cleanup();
                 bool subscribe_resp();
-                bool handle_command(const std::string& res);
+                bool handle_command(const pt::ptree&, const std::string& res);
                 bool mining_notify(const pt::ptree& params);
                 bool mining_difficulty(const pt::ptree& params);
                 bool client_reconnect(const pt::ptree& params);

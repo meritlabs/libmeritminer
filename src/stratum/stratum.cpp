@@ -378,8 +378,7 @@ namespace merit
                 _port = boost::lexical_cast<std::string>(*port_int);
             }
 
-            disconnect();
-            return true;
+            return reconnect();
         }
 
         bool Client::client_get_version(const pt::ptree& id)
@@ -406,14 +405,8 @@ namespace merit
             return true;
         }
 
-        bool Client::handle_command(const std::string& res)
+        bool Client::handle_command(const pt::ptree& val, const std::string& res)
         {
-            pt::ptree val;
-            if(!parse_json(res, val)) {
-                std::cerr << "error parsing stratum response: " << res << std::endl;
-                return false;
-            }
-
             auto id = val.get_child_optional("id");
             auto method = val.get_optional<std::string>("method");
             if(!method) {
@@ -526,10 +519,18 @@ namespace merit
                     std::cerr << "error: disconnected: " << std::endl;
                     throw std::runtime_error("disconnected.");
                 }
-                if(!handle_command(res)) {
+
+                pt::ptree val;
+                if(!parse_json(res, val)) {
                     _sockbuf.clear();
+                    std::cerr << "error parsing stratum response: " << res << std::endl;
                     continue;
                 }
+
+                if(!handle_command(val, res)) {
+                    continue;
+                }
+
             } catch(std::exception& e) {
                 if(!reconnect()) {
                     std::cerr << "error: " << "failed to reconnect" << std::endl;
