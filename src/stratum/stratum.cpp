@@ -527,6 +527,7 @@ namespace merit
                     throw std::runtime_error("disconnected.");
                 }
                 if(!handle_command(res)) {
+                    _sockbuf.clear();
                     continue;
                 }
             } catch(std::exception& e) {
