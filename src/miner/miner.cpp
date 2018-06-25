@@ -51,8 +51,15 @@ bool FindCycleOnCudaDevice(
 
 int CudaDevices();
 
+std::vector<merit::GPUInfo> GPUsInfo();
+
 #else
 int CudaDevices() { return 0;}
+
+std::vector<merit::GPUInfo> GPUsInfo(){
+    return std::vector<merit::GPUInfo>();
+};
+
 #endif
 
 namespace merit
@@ -77,6 +84,15 @@ namespace merit
         {
             return ::CudaDevices();
         }
+
+        std::vector<merit::GPUInfo> GPUInfo()
+        {
+            std::cout << "before" << std::endl;
+            auto a = ::GPUsInfo();
+            std::cout << "after" << std::endl;
+            return a;
+        }
+
 
         Stat::Stat()
         {

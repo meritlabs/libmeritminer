@@ -303,6 +303,11 @@ namespace merit
 
         return s;
     }
+
+    std::vector<merit::GPUInfo> gpus_info(){
+        return miner::GPUInfo();
+    };
+
 }
 
 

@@ -32,6 +32,9 @@
 #define MERIT_MINER_MINER_H
 
 #include <array>
+#include <map>
+#include <string>
+#include <vector>
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -40,6 +43,7 @@
 #include "stratum/stratum.hpp"
 
 #include <boost/optional.hpp>
+#include <merit/miner.hpp>
 
 #include "ctpl/ctpl.h"
 
@@ -48,6 +52,7 @@ namespace merit
     namespace miner
     {
         int GpuDevices();
+        std::vector<merit::GPUInfo> GPUInfo();
 
         using MaybeStratumJob = boost::optional<stratum::Job>;
         class Miner;

@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <atomic>
 #include <vector>
+#include <map>
+#include <string>
 #include <iostream>
 #include <sstream>
 #include <set>
@@ -951,6 +953,40 @@ int CudaDevices()
     cudaGetDeviceCount(&count);
     return count;
 }
+
+struct GPUInfo {
+    size_t id;
+    std::string title;
+};
+
+std::vector<GPUInfo> GPUsInfo()
+{
+    std::vector<GPUInfo> res{};
+
+    int devices = CudaDevices();
+    for (int i = 0; i < devices; i++) {
+        GPUInfo item{};
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, i);
+        item.id = i;
+        item.title = prop.name;
+
+        res.push_back(item);
+
+//        printf("Device Number: %d\n", i);
+//        printf("  Device name: %s\n", prop.name);
+//        printf("  Global memory: %d\n", prop.totalGlobalMem / 1024);
+//        printf("  Shared memory: %d\n", prop.sharedMemPerBlock);
+//        printf("  Constant memory: %d\n", prop.totalConstMem);
+//        printf("  Max grid dimensions: %d\n", prop.maxGridSize[0]);
+//        printf("  Threads per block: %d\n", prop.maxThreadsPerBlock);
+    }
+
+    std::cout << "Return from cuda" << std::endl;
+
+    return res;
+}
+
 
 bool FindCycleOnCudaDevice(
         uint64_t sip_k0, uint64_t sip_k1,
