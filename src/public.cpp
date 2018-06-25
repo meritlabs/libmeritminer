@@ -157,7 +157,7 @@ namespace merit
         c->stratum.stop();
     }
 
-    bool run_miner(Context* c, int workers, int threads_per_worker, int gpu_devices)
+    bool run_miner(Context* c, int workers, int threads_per_worker, const std::vector<int>& gpu_devices)
     try
     {
         assert(c);

@@ -109,7 +109,7 @@ namespace merit
                 Miner(
                         int workers,
                         int threads_per_worker,
-                        int gpu_devices,
+                        const std::vector<int>& gpu_devices,
                         util::SubmitWorkFunc submit_work);
 
             public:

@@ -35,7 +35,7 @@ namespace merit
         std::string title;
     };
 
-    bool run_miner(Context*, int workers, int threads_per_worker, int gpu_devices);
+    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);
     void stop_miner(Context*);
     bool is_stratum_running(Context*);
     bool is_miner_running(Context*);

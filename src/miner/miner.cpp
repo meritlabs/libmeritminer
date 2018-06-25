@@ -151,12 +151,12 @@ namespace merit
         Miner::Miner(
                 int workers,
                 int threads_per_worker,
-                int gpu_devices,
+                const std::vector<int>& gpu_devices,
                 util::SubmitWorkFunc submit_work) :
             _submit_work{submit_work},
-            _pool{(workers * threads_per_worker) + workers + gpu_devices}
+            _pool{(workers * threads_per_worker) + workers + gpu_devices.size()}
         {
-            gpu_devices = std::min(gpu_devices, GpuDevices());
+//            gpu_devices = std::min(gpu_devices, GpuDevices());
 
             assert(workers >= 0);
             assert(threads_per_worker >= 0);
@@ -164,14 +164,14 @@ namespace merit
             _state = NotRunning;
             std::cerr << "info: " << "workers: " << workers << std::endl;
             std::cerr << "info: " << "threads per worker: " << threads_per_worker << std::endl;
-            std::cerr << "info: " << "gpu devices: " << gpu_devices << std::endl;
+            std::cerr << "info: " << "gpu devices: " << gpu_devices.size() << std::endl;
 
             for(int i = 0; i < workers; i++) {
                 _workers.emplace_back(i, threads_per_worker, false, _pool, *this);
             }
 
-            for(int i = 0; i < gpu_devices; i++) {
-                _workers.emplace_back(i, threads_per_worker, true, _pool, *this);
+            for(int i = 0; i < gpu_devices.size(); i++) {
+                _workers.emplace_back(gpu_devices[i], threads_per_worker, true, _pool, *this);
             }
         }
 
