@@ -87,10 +87,7 @@ namespace merit
 
         std::vector<merit::GPUInfo> GPUInfo()
         {
-            std::cout << "before" << std::endl;
-            auto a = ::GPUsInfo();
-            std::cout << "after" << std::endl;
-            return a;
+            return ::GPUsInfo();
         }
 
 

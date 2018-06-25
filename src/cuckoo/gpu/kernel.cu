@@ -982,8 +982,6 @@ std::vector<GPUInfo> GPUsInfo()
 //        printf("  Threads per block: %d\n", prop.maxThreadsPerBlock);
     }
 
-    std::cout << "Return from cuda" << std::endl;
-
     return res;
 }
 
