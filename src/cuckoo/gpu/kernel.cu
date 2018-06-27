@@ -819,7 +819,7 @@ struct Run
         std::ostringstream err_msg;
 
         if (status != cudaSuccess) {
-            err_msg << "An error occurred while trying to allocate memory for CUDA device: ";
+            err_msg << "An error occurred while trying to set the CUDA device: ";
             err_msg << cudaGetErrorString(status);
             throw CudaSetDeviceException(err_msg.str());
         }
