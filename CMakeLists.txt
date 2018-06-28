@@ -30,12 +30,18 @@ include_directories(src/util)
 include_directories(src/PicoSHA2)
 
 find_package(CUDA)
-
 if(CUDA_FOUND)
     add_definitions(-DCUDA_ENABLED)
-    add_library(meritminer STATIC 
+
+    link_directories(${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+    include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    add_library(cuda STATIC IMPORTED)
+    set_target_properties(cuda PROPERTIES IMPORTED_LOCATION ${CUDA_cudart_static_LIBRARY})
+
+    add_library(meritminer STATIC
         src/public.cpp
         src/cuckoo/gpu/kernel.cu
+        src/cuckoo/gpu/exceptions.h
         src/cuckoo/mean_cuckoo.cpp
         src/blake2/blake2b-ref.c
         src/stratum/stratum.cpp
@@ -55,11 +61,14 @@ target_compile_features(meritminer PUBLIC cxx_std_14)
 set_target_properties(meritminer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 set(FAT_LIB ${CMAKE_BINARY_DIR}/libfatmeritminer.a)
+
+# TODO: Simplify this
 add_custom_target(combined
     COMMAND ar -x $<TARGET_FILE:meritminer>
     COMMAND ar -x $<TARGET_FILE:boost_system>
     COMMAND ar -x $<TARGET_FILE:boost_program_options>
     COMMAND ar -x $<TARGET_FILE:boost_thread>
+    COMMAND ar -x $<TARGET_FILE:cuda>
     COMMAND ar -qcs ${FAT_LIB} *.cu.o *.o
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DEPENDS meritminer boost_system boost_program_options boost_thread)
