@@ -954,6 +954,18 @@ int CudaDevices()
     return count;
 }
 
+int tmp = CudaDevices();
+
+size_t CudaGetFreeMemory(int device){
+    size_t free, total;
+
+    cudaSetDevice(device);
+    cudaDeviceReset();
+
+    cudaMemGetInfo(&free, &total);
+    return free;
+}
+
 struct GPUInfo {
     size_t id;
     std::string title;
