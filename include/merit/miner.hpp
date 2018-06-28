@@ -43,6 +43,7 @@ namespace merit
     bool is_miner_stopping(Context*);
     int number_of_cores();
     int number_of_gpus();
+    size_t free_memory_on_gpu(int device);
     std::vector<GPUInfo> gpus_info();
 
     struct MinerStat

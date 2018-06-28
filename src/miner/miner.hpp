@@ -53,6 +53,7 @@ namespace merit
     {
         int GpuDevices();
         std::vector<merit::GPUInfo> GPUInfo();
+        size_t CudaGetFreeMemory(int device);
 
         using MaybeStratumJob = boost::optional<stratum::Job>;
         class Miner;

@@ -53,6 +53,8 @@ int CudaDevices();
 
 std::vector<merit::GPUInfo> GPUsInfo();
 
+size_t CudaGetFreeMemory(int device);
+
 #else
 int CudaDevices() { return 0;}
 
@@ -88,6 +90,11 @@ namespace merit
         std::vector<merit::GPUInfo> GPUInfo()
         {
             return ::GPUsInfo();
+        }
+
+        size_t CudaGetFreeMemory(int device)
+        {
+            return ::CudaGetFreeMemory(device);
         }
 
 

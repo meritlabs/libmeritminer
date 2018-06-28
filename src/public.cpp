@@ -268,6 +268,11 @@ namespace merit
         return miner::GpuDevices();
     }
 
+    size_t free_memory_on_gpu(int device){
+        return miner::CudaGetFreeMemory(device);
+    };
+
+
     MinerStat to_public_stat(const miner::Stat& s)
     {
         return {
