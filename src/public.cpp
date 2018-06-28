@@ -186,7 +186,9 @@ namespace merit
                     c->miner->run();
                 } catch(std::exception& e) {
                     c->miner->stop();
-                    std::cerr << "error: " << "error running miner: " << e.what()<< std::endl; 
+                    std::cerr << "error: " << e.what() << std::endl;
+
+                    return false;
                 }
         });
 
