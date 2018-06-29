@@ -76,6 +76,7 @@ int main(int argc, char** argv)
         std::cout << "GPU info:" << std::endl;
         for(const auto &item: info){
             std::cout << "Device number: " << item.id << std::endl;
+            std::cout << "Total memory: " << item.total_memory << std::endl;
             std::cout << "Title: " << item.title << std::endl << std::endl;
         }
 

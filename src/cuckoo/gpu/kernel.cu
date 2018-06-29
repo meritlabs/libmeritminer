@@ -969,6 +969,7 @@ size_t CudaGetFreeMemory(int device){
 struct GPUInfo {
     size_t id;
     std::string title;
+    long long int total_memory;
 };
 
 std::vector<GPUInfo> GPUsInfo()
@@ -982,6 +983,7 @@ std::vector<GPUInfo> GPUsInfo()
         cudaGetDeviceProperties(&prop, i);
         item.id = i;
         item.title = prop.name;
+        item.total_memory = prop.totalGlobalMem;
 
         res.push_back(item);
 

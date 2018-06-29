@@ -33,6 +33,7 @@ namespace merit
     struct GPUInfo {
         size_t id;
         std::string title;
+        long long int total_memory;
     };
 
     bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);
