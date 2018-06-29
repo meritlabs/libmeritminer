@@ -14,18 +14,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * In addition, as a special exception, the copyright holders give 
- * permission to link the code of portions of this program with the 
- * Botan library under certain conditions as described in each 
- * individual source file, and distribute linked combinations 
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of portions of this program with the
+ * Botan library under certain conditions as described in each
+ * individual source file, and distribute linked combinations
  * including the two.
  *
- * You must obey the GNU General Public License in all respects for 
- * all of the code used other than Botan. If you modify file(s) with 
- * this exception, you may extend this exception to your version of the 
- * file(s), but you are not obligated to do so. If you do not wish to do 
- * so, delete this exception statement from your version. If you delete 
- * this exception statement from all source files in the program, then 
+ * You must obey the GNU General Public License in all respects for
+ * all of the code used other than Botan. If you modify file(s) with
+ * this exception, you may extend this exception to your version of the
+ * file(s), but you are not obligated to do so. If you do not wish to do
+ * so, delete this exception statement from your version. If you delete
+ * this exception statement from all source files in the program, then
  * also delete it here.
  */
 #include "miner/miner.hpp"
@@ -68,7 +68,7 @@ namespace merit
 {
     namespace miner
     {
-        namespace 
+        namespace
         {
             const int CUCKOO_PROOF_SIZE = 42;
             const int MAX_STATS = 100;
@@ -161,7 +161,7 @@ namespace merit
                 const std::vector<int>& gpu_devices,
                 util::SubmitWorkFunc submit_work) :
             _submit_work{submit_work},
-            _pool{(workers * threads_per_worker) + workers + gpu_devices.size()}
+            _pool{static_cast<int>((workers * threads_per_worker) + workers + gpu_devices.size())}
         {
 //            gpu_devices = std::min(gpu_devices, GpuDevices());
 
@@ -243,7 +243,7 @@ namespace merit
             using namespace std::chrono_literals;
             if(_state != NotRunning) {
                 return;
-            } 
+            }
 
             _state = Running;
 
@@ -270,12 +270,12 @@ namespace merit
             return _next_work;
         }
 
-        int Miner::total_workers() const 
+        int Miner::total_workers() const
         {
             return _workers.size();
         }
 
-        Miner::State Miner::state() const 
+        Miner::State Miner::state() const
         {
             return _state;
         }
@@ -343,7 +343,7 @@ namespace merit
         }
 
         bool target_test(
-                const std::array<uint32_t, 8>& hash, 
+                const std::array<uint32_t, 8>& hash,
                 const std::array<uint32_t, 8>& target)
         {
             for (int i = 7; i >= 0; i--) {
