@@ -14,32 +14,61 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * In addition, as a special exception, the copyright holders give 
- * permission to link the code of portions of this program with the 
- * Botan library under certain conditions as described in each 
- * individual source file, and distribute linked combinations 
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of portions of this program with the
+ * Botan library under certain conditions as described in each
+ * individual source file, and distribute linked combinations
  * including the two.
  *
- * You must obey the GNU General Public License in all respects for 
- * all of the code used other than Botan. If you modify file(s) with 
- * this exception, you may extend this exception to your version of the 
- * file(s), but you are not obligated to do so. If you do not wish to do 
- * so, delete this exception statement from your version. If you delete 
- * this exception statement from all source files in the program, then 
+ * You must obey the GNU General Public License in all respects for
+ * all of the code used other than Botan. If you modify file(s) with
+ * this exception, you may extend this exception to your version of the
+ * file(s), but you are not obligated to do so. If you do not wish to do
+ * so, delete this exception statement from your version. If you delete
+ * this exception statement from all source files in the program, then
  * also delete it here.
  */
 #include "miner/miner.hpp"
 #include "cuckoo/mean_cuckoo.h"
+#include "crypto/siphash.h"
+#include "blake2/blake2.h"
 
 #include<chrono>
 #include<iostream>
 #include<set>
 
+
+#ifdef CUDA_ENABLED
+
+using Cycle = std::set<uint32_t>;
+
+bool FindCycleOnCudaDevice(
+        uint64_t sip_k0, uint64_t sip_k1,
+        uint8_t edgebits,
+        uint8_t proof_size,
+        Cycle& cycle,
+        int device);
+
+int CudaDevices();
+
+std::vector<merit::GPUInfo> GPUsInfo();
+
+size_t CudaGetFreeMemory(int device);
+
+#else
+int CudaDevices() { return 0;}
+
+std::vector<merit::GPUInfo> GPUsInfo(){
+    return std::vector<merit::GPUInfo>();
+};
+
+#endif
+
 namespace merit
 {
     namespace miner
     {
-        namespace 
+        namespace
         {
             const int CUCKOO_PROOF_SIZE = 42;
             const int MAX_STATS = 100;
@@ -52,6 +81,22 @@ namespace merit
                         b.data.begin());
             }
         }
+
+        int GpuDevices()
+        {
+            return ::CudaDevices();
+        }
+
+        std::vector<merit::GPUInfo> GPUInfo()
+        {
+            return ::GPUsInfo();
+        }
+
+        size_t CudaGetFreeMemory(int device)
+        {
+            return ::CudaGetFreeMemory(device);
+        }
+
 
         Stat::Stat()
         {
@@ -113,19 +158,27 @@ namespace merit
         Miner::Miner(
                 int workers,
                 int threads_per_worker,
+                const std::vector<int>& gpu_devices,
                 util::SubmitWorkFunc submit_work) :
             _submit_work{submit_work},
-            _pool{(workers * threads_per_worker) + workers}
+            _pool{static_cast<int>((workers * threads_per_worker) + workers + gpu_devices.size())}
         {
-            assert(workers >= 1);
-            assert(threads_per_worker >= 1);
+//            gpu_devices = std::min(gpu_devices, GpuDevices());
+
+            assert(workers >= 0);
+            assert(threads_per_worker >= 0);
 
             _state = NotRunning;
             std::cerr << "info: " << "workers: " << workers << std::endl;
             std::cerr << "info: " << "threads per worker: " << threads_per_worker << std::endl;
+            std::cerr << "info: " << "gpu devices: " << gpu_devices.size() << std::endl;
 
             for(int i = 0; i < workers; i++) {
-                _workers.emplace_back(i, threads_per_worker, _pool, *this);
+                _workers.emplace_back(i, threads_per_worker, false, _pool, *this);
+            }
+
+            for(int i = 0; i < gpu_devices.size(); i++) {
+                _workers.emplace_back(gpu_devices[i], threads_per_worker, true, _pool, *this);
             }
         }
 
@@ -190,7 +243,7 @@ namespace merit
             using namespace std::chrono_literals;
             if(_state != NotRunning) {
                 return;
-            } 
+            }
 
             _state = Running;
 
@@ -217,12 +270,12 @@ namespace merit
             return _next_work;
         }
 
-        int Miner::total_workers() const 
+        int Miner::total_workers() const
         {
             return _workers.size();
         }
 
-        Miner::State Miner::state() const 
+        Miner::State Miner::state() const
         {
             return _state;
         }
@@ -261,11 +314,13 @@ namespace merit
         Worker::Worker(
                 int id,
                 int threads,
+                bool gpu_device,
                 ctpl::thread_pool& pool,
                 Miner& miner) :
             _state{NotRunning},
             _id{id},
             _threads{threads},
+            _gpu_device{gpu_device},
             _pool{pool},
             _miner{miner}
         {
@@ -274,6 +329,7 @@ namespace merit
         Worker::Worker(const Worker& o) :
             _id{o._id},
             _threads{o._threads},
+            _gpu_device{o._gpu_device},
             _pool{o._pool},
             _miner{o._miner}
         {
@@ -287,7 +343,7 @@ namespace merit
         }
 
         bool target_test(
-                const std::array<uint32_t, 8>& hash, 
+                const std::array<uint32_t, 8>& hash,
                 const std::array<uint32_t, 8>& target)
         {
             for (int i = 7; i >= 0; i--) {
@@ -354,6 +410,35 @@ namespace merit
 
                 uint8_t edgebits = work->data[20] >> 24;
 
+#if CUDA_ENABLED
+                bool found = false;
+                if(!_gpu_device) {
+                    found = cuckoo::FindCycle(
+                            hex_header_hash.data(),
+                            hex_header_hash.size(),
+                            edgebits,
+                            CUCKOO_PROOF_SIZE,
+                            cycle,
+                            _threads,
+                            _pool);
+                } else {
+                    crypto::siphash_keys keys;
+                    char hdrkey[32];
+                    blake2b(
+                            reinterpret_cast<void*>(hdrkey),
+                            sizeof(hdrkey),
+                            reinterpret_cast<const void*>(hex_header_hash.data()),
+                            hex_header_hash.size(), 0, 0);
+                    crypto::setkeys(&keys, hdrkey);
+
+                    found = FindCycleOnCudaDevice(
+                            keys.k0, keys.k1,
+                            edgebits,
+                            CUCKOO_PROOF_SIZE,
+                            cycle,
+                            _id);
+                }
+#else
                 bool found = cuckoo::FindCycle(
                         hex_header_hash.data(),
                         hex_header_hash.size(),
@@ -362,6 +447,7 @@ namespace merit
                         cycle,
                         _threads,
                         _pool);
+#endif
 
                 auto& stat = _miner.current_stat();
                 stat.attempts++;

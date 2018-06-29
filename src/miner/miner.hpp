@@ -32,6 +32,9 @@
 #define MERIT_MINER_MINER_H
 
 #include <array>
+#include <map>
+#include <string>
+#include <vector>
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -40,6 +43,7 @@
 #include "stratum/stratum.hpp"
 
 #include <boost/optional.hpp>
+#include <merit/miner.hpp>
 
 #include "ctpl/ctpl.h"
 
@@ -47,6 +51,9 @@ namespace merit
 {
     namespace miner
     {
+        int GpuDevices();
+        std::vector<merit::GPUInfo> GPUInfo();
+        size_t CudaGetFreeMemory(int device);
 
         using MaybeStratumJob = boost::optional<stratum::Job>;
         class Miner;
@@ -56,7 +63,7 @@ namespace merit
                 enum State {Running, NotRunning};
 
                 Worker(const Worker& o);
-                Worker(int id, int threads, ctpl::thread_pool&, Miner&);
+                Worker(int id, int threads, bool gpu_device, ctpl::thread_pool&, Miner&);
 
             public:
 
@@ -68,6 +75,7 @@ namespace merit
                 std::atomic<State> _state;
                 int _id;
                 int _threads;
+                bool _gpu_device;
                 ctpl::thread_pool& _pool;
                 Miner& _miner;
         };
@@ -102,6 +110,7 @@ namespace merit
                 Miner(
                         int workers,
                         int threads_per_worker,
+                        const std::vector<int>& gpu_devices,
                         util::SubmitWorkFunc submit_work);
 
             public:

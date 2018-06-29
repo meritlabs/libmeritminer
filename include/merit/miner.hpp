@@ -30,13 +30,22 @@ namespace merit
     bool run_stratum(Context*);
     void stop_stratum(Context*);
 
-    bool run_miner(Context*, int workers, int threads_per_worker);
+    struct GPUInfo {
+        size_t id;
+        std::string title;
+        long long int total_memory;
+    };
+
+    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);
     void stop_miner(Context*);
     bool is_stratum_running(Context*);
     bool is_miner_running(Context*);
     bool is_stratum_stopping(Context*);
     bool is_miner_stopping(Context*);
     int number_of_cores();
+    int number_of_gpus();
+    size_t free_memory_on_gpu(int device);
+    std::vector<GPUInfo> gpus_info();
 
     struct MinerStat
     {

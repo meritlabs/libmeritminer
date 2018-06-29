@@ -34,6 +34,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <vector>
 #include <thread>
 #include <utility>
 
@@ -50,13 +51,15 @@ int main(int argc, char** argv)
 {
     po::options_description desc("Allowed options");
     std::string url;
+    std::vector<int> gpu_devices;
     std::string address;
     desc.add_options()
         ("help", "show the help message")
+        ("infogpu", "show the info about GPU in your system")
         ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
         ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
-        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The address to send mining rewards to.");
-
+        ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
+        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
 
 
     po::variables_map vm;
@@ -68,6 +71,18 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    if (vm.count("infogpu")) {
+        auto info = merit::gpus_info();
+        std::cout << "GPU info:" << std::endl;
+        for(const auto &item: info){
+            std::cout << "Device number: " << item.id << std::endl;
+            std::cout << "Total memory: " << item.total_memory << std::endl;
+            std::cout << "Title: " << item.title << std::endl << std::endl;
+        }
+
+        return 1;
+    }
+
     if(address.empty()) {
         std::cout << "forgot to set your reward address. use --address" << std::endl;
         return 1;
@@ -75,7 +90,7 @@ int main(int argc, char** argv)
 
     int cores;
     cores = vm["cores"].as<int>();
-    cores = std::max(1, cores);
+    cores = std::max(0, cores);
     auto utilization = determine_utilization(cores);
 
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
@@ -86,7 +101,7 @@ int main(int argc, char** argv)
         return 1;
     }
     merit::run_stratum(c.get());
-    merit::run_miner(c.get(), utilization.first ,utilization.second);
+    merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
 
     int prev_graphs = 0;
     while(true) { 
@@ -109,5 +124,6 @@ int main(int argc, char** argv)
         }
         prev_graphs = graphs;
     }
+
     return 0;
 }

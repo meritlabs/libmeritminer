@@ -157,7 +157,7 @@ namespace merit
         c->stratum.stop();
     }
 
-    bool run_miner(Context* c, int workers, int threads_per_worker)
+    bool run_miner(Context* c, int workers, int threads_per_worker, const std::vector<int>& gpu_devices)
     try
     {
         assert(c);
@@ -174,6 +174,7 @@ namespace merit
         c->miner = std::make_unique<miner::Miner>(
                 workers,
                 threads_per_worker,
+                gpu_devices,
                 c->submit_work_func);
 
         std::cerr << "info: " << "starting miner..."<< std::endl; 
@@ -185,7 +186,9 @@ namespace merit
                     c->miner->run();
                 } catch(std::exception& e) {
                     c->miner->stop();
-                    std::cerr << "error: " << "error running miner: " << e.what()<< std::endl; 
+                    std::cerr << "error: " << e.what() << std::endl;
+
+                    return false;
                 }
         });
 
@@ -260,6 +263,16 @@ namespace merit
         return std::thread::hardware_concurrency();
     }
 
+    int number_of_gpus()
+    {
+        return miner::GpuDevices();
+    }
+
+    size_t free_memory_on_gpu(int device){
+        return miner::CudaGetFreeMemory(device);
+    };
+
+
     MinerStat to_public_stat(const miner::Stat& s)
     {
         return {
@@ -297,6 +310,11 @@ namespace merit
 
         return s;
     }
+
+    std::vector<merit::GPUInfo> gpus_info(){
+        return miner::GPUInfo();
+    };
+
 }
 
 
