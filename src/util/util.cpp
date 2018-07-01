@@ -30,6 +30,7 @@
  */
 #include "util/util.hpp"
 
+#include <array>
 #include "PicoSHA2/picosha2.h"
 #include <array>
 
@@ -42,6 +43,7 @@ namespace merit
                 const unsigned char* data,
                 size_t len)
         {
+			
             std::array<unsigned char, picosha2::k_digest_size> d;
             picosha2::hash256(data, data+len, d.begin(), d.end());
             picosha2::hash256(d.begin(), d.end(), digest, digest+picosha2::k_digest_size);

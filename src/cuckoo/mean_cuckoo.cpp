@@ -40,7 +40,9 @@
 #include <mutex>
 #include <thread>
 #include <cstdint>
-
+#undef min
+#undef max
+#undef small
 // algorithm/performance parameters
 
 // The node bits are logically split into 3 groups:
@@ -281,9 +283,13 @@ namespace merit
                     return sumsize;
                 }
             };
-
+#ifdef __GNUC__
 #define likely(x) __builtin_expect((x) != 0, 1)
 #define unlikely(x) __builtin_expect((x), 0)
+#else 
+#define likely(x) (x)
+#define unlikely(x) (x)
+#endif
 
         // break circular reference with forward declaration
 
@@ -326,7 +332,7 @@ namespace merit
             {
                 public:
                     using P = Params<EDGEBITS, XBITS>;
-                    using zbucket8P = zbucket8<EDGEBITS, XBITS>;
+                    using zbucket8P = std::uint8_t[2 * cmax(Params<EDGEBITS, XBITS>::NZ, Params<EDGEBITS, XBITS>::NYZ1)];
                     using zbucket16P = zbucket16<EDGEBITS, XBITS>;
                     using zbucket32P = zbucket32<EDGEBITS, XBITS>;
                     using zbucketZ = zbucket<EDGEBITS, XBITS, P::ZBUCKETSIZE>;
@@ -359,14 +365,12 @@ namespace merit
                             ctpl::thread_pool& poolIn,
                             size_t threadsIn,
                             const std::uint32_t nTrimsIn) : pool{poolIn}, nTrims{nTrimsIn}
-                    {
-                        assert(sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>) == P::NX * sizeof(yzbucketZ));
-                        assert(sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>) == P::NX * sizeof(yzbucketZ));
+                    {                    
 
                         threads = threadsIn;
 
                         buckets = new yzbucketZ[P::NX];
-                        touch((std::uint8_t*)buckets, sizeof(matrix<EDGEBITS, XBITS, P::ZBUCKETSIZE>));
+                        touch((std::uint8_t*)buckets, sizeof(zbucket<EDGEBITS, XBITS, P::ZBUCKETSIZE>) * P::NX * P::NY);
                         tbuckets = new yzbucketT[threads];
                         touch((std::uint8_t*)tbuckets, threads * sizeof(yzbucketT));
 
@@ -1338,7 +1342,7 @@ namespace merit
                     pool,
                         threads,
                         hex_header_hash,
-                        hex_header_hash_len,
+                        static_cast<std::uint32_t>(hex_header_hash_len),
                         nTrims,
                         proofSize};
 

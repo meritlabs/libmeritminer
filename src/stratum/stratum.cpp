@@ -14,18 +14,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * In addition, as a special exception, the copyright holders give 
- * permission to link the code of portions of this program with the 
- * Botan library under certain conditions as described in each 
- * individual source file, and distribute linked combinations 
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of portions of this program with the
+ * Botan library under certain conditions as described in each
+ * individual source file, and distribute linked combinations
  * including the two.
  *
- * You must obey the GNU General Public License in all respects for 
- * all of the code used other than Botan. If you modify file(s) with 
- * this exception, you may extend this exception to your version of the 
- * file(s), but you are not obligated to do so. If you do not wish to do 
- * so, delete this exception statement from your version. If you delete 
- * this exception statement from all source files in the program, then 
+ * You must obey the GNU General Public License in all respects for
+ * all of the code used other than Botan. If you modify file(s) with
+ * this exception, you may extend this exception to your version of the
+ * file(s), but you are not obligated to do so. If you do not wish to do
+ * so, delete this exception statement from your version. If you delete
+ * this exception statement from all source files in the program, then
  * also delete it here.
  */
 #include "stratum/stratum.hpp"
@@ -62,7 +62,7 @@ namespace merit
             const int CTCP_KEEPIDLE = 50;
             const int CTCP_KEEPINTVL = 30;
 
-            const std::string PACKAGE_NAME = "meritminer";
+            const std::string PACKAGE_NAME = "libmeritminer";
             const std::string PACKAGE_VERSION = "0.0.1";
             const std::string USER_AGENT = PACKAGE_NAME + "/" + PACKAGE_VERSION;
         }
@@ -77,7 +77,7 @@ namespace merit
         {
         }
 
-        Client::~Client() 
+        Client::~Client()
         {
             disconnect();
         }
@@ -133,7 +133,7 @@ namespace merit
                         SOL_TCP,
                         TCP_KEEPIDLE,
                         &CTCP_KEEPIDLE,
-                        sizeof(CTCP_KEEPIDLE))) { 
+                        sizeof(CTCP_KEEPIDLE))) {
                 std::cerr << "error: " << "error setting keepidle" << std::endl;
                 return false;
             }
@@ -163,8 +163,8 @@ namespace merit
         }
 
         bool Client::connect(
-                    const std::string& iurl, 
-                    const std::string& iuser, 
+                    const std::string& iurl,
+                    const std::string& iuser,
                     const std::string& ipass)
         try
         {
@@ -177,7 +177,7 @@ namespace merit
             _user = iuser;
             _pass = ipass;
 
-            auto host_pos = _url.find("://") + 3; 
+            auto host_pos = _url.find("://") + 3;
             auto port_pos = _url.find(":", 14) + 1;
             _host = _url.substr(host_pos, port_pos - host_pos - 1);
             _port = _url.substr(port_pos);
@@ -233,8 +233,8 @@ namespace merit
 
             pt::read_json(ss, r);
             return true;
-        } 
-        catch(std::exception& e) 
+        }
+        catch(std::exception& e)
         {
             std::cerr << "error: " << "error parsing json: " << e.what() << std::endl;
             return false;
@@ -314,14 +314,14 @@ namespace merit
 
             j.coinbase1_size = coinbase1->size()/2;
 
-            if(!util::parse_hex(*coinbase1, j.coinbase)) { return false; } 
+            if(!util::parse_hex(*coinbase1, j.coinbase)) { return false; }
             j.coinbase.insert(j.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
 
             j.xnonce2_start = j.coinbase.size();
             j.xnonce2_size = _xnonce2_size;
 
             j.coinbase.insert(j.coinbase.end(), _xnonce2_size, 0);
-            if(!util::parse_hex(*coinbase2, j.coinbase)) { return false; } 
+            if(!util::parse_hex(*coinbase2, j.coinbase)) { return false; }
 
             j.id = *job_id;
 
@@ -378,8 +378,7 @@ namespace merit
                 _port = boost::lexical_cast<std::string>(*port_int);
             }
 
-            disconnect();
-            return true;
+            return reconnect();
         }
 
         bool Client::client_get_version(const pt::ptree& id)
@@ -406,14 +405,8 @@ namespace merit
             return true;
         }
 
-        bool Client::handle_command(const std::string& res)
+        bool Client::handle_command(const pt::ptree& val, const std::string& res)
         {
-            pt::ptree val;
-            if(!parse_json(res, val)) {
-                std::cerr << "error parsing stratum response: " << res << std::endl;
-                return false;
-            }
-
             auto id = val.get_child_optional("id");
             auto method = val.get_optional<std::string>("method");
             if(!method) {
@@ -484,8 +477,8 @@ namespace merit
             int tries = 1;
             while(_run_state == Running && !connected) {
                 try {
-                    connected = connect(_url, _user, _pass); 
-                    if(connected) { 
+                    connected = connect(_url, _user, _pass);
+                    if(connected) {
                         connected = subscribe();
                         if(connected) {
                             connected = authorize();
@@ -515,7 +508,7 @@ namespace merit
         bool Client::run()
         {
             _run_state = Running;
-            while (_run_state == Running) 
+            while (_run_state == Running)
             try {
                 std::string res;
                 if(!recv(res)) {
@@ -526,9 +519,18 @@ namespace merit
                     std::cerr << "error: disconnected: " << std::endl;
                     throw std::runtime_error("disconnected.");
                 }
-                if(!handle_command(res)) {
+
+                pt::ptree val;
+                if(!parse_json(res, val)) {
+                    _sockbuf.clear();
+                    std::cerr << "error parsing stratum response: " << res << std::endl;
                     continue;
                 }
+
+                if(!handle_command(val, res)) {
+                    continue;
+                }
+
             } catch(std::exception& e) {
                 if(!reconnect()) {
                     std::cerr << "error: " << "failed to reconnect" << std::endl;
@@ -589,7 +591,7 @@ namespace merit
 
             std::string ntime_hex;
             util::to_hex(
-                    reinterpret_cast<const unsigned char*>(&ntime), 
+                    reinterpret_cast<const unsigned char*>(&ntime),
                     reinterpret_cast<const unsigned char*>(&ntime)+4,
                     ntime_hex);
 
@@ -599,14 +601,14 @@ namespace merit
                     reinterpret_cast<const unsigned char*>(&nonce) + 4,
                     nonce_hex);
             std::stringstream cycle;
-            for(int i = 0; i < w.cycle.size(); i++) { 
+            for(int i = 0; i < w.cycle.size(); i++) {
                 if(i > 0) { cycle << ","; }
                 cycle << std::hex << w.cycle[i];
             }
 
             std::stringstream req;
             req << "{\"method\": \"mining.submit\", \"params\": ["
-                << "\"" << _user << "\"," 
+                << "\"" << _user << "\","
                 << "\"" << w.jobid << "\","
                 << "\"" << xnonce2_hex << "\","
                 << "\"" << ntime_hex << "\","
@@ -732,8 +734,8 @@ namespace merit
                     if(error && error != boost::asio::error::eof) {
                         std::cerr << "error: " << "error receiving data: " << error << std::endl;
                         return false;
-                    } 
-                    
+                    }
+
                     _sockbuf.insert(_sockbuf.end(), s.data(), s.data()+len);
 
                     auto end = std::chrono::system_clock::now();
@@ -776,7 +778,7 @@ namespace merit
             target[k + 1] = static_cast<uint32_t>(m >> 32);
         }
 
-        util::Work work_from_job(const stratum::Job& a) 
+        util::Work work_from_job(const stratum::Job& a)
         {
             auto j = a;
             util::Work w;
@@ -790,7 +792,7 @@ namespace merit
             std::array<unsigned char, 64> merkle_root;
             std::fill(merkle_root.begin(), merkle_root.end(), 0);
 
-            //sha256 
+            //sha256
             util::double_sha256(merkle_root.data(), j.coinbase.data(), j.coinbase.size());
 
             for(const auto& m : j.merkle) {
