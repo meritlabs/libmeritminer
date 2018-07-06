@@ -795,6 +795,37 @@ bool FindCycles(
     return false;
 }
 
+int CudaDevices()
+{
+    int count = 0;
+    cudaGetDeviceCount(&count);
+    return count;
+}
+
+int SetupBuffers() {
+    int count = CudaDevices();
+
+    if(!buffer_a.empty()) {
+        return count;
+    }
+
+    assert(buffer_a.empty());
+    assert(buffer_b.empty());
+    assert(indexes_e.empty());
+    assert(indexes_e2.empty());
+    assert(recovery.empty());
+
+    buffer_a.resize(count, nullptr);
+    buffer_b.resize(count, nullptr);
+    indexes_e.resize(count, nullptr);
+    indexes_e2.resize(count, nullptr);
+    recovery.resize(count, nullptr);
+
+    return count;
+}
+
+const int TOTAL_DEVICES = SetupBuffers();
+
 using Cycle = std::set<uint32_t>;
 
 template <class offset_t, uint8_t EDGEBITS, uint8_t XBITS>
@@ -808,6 +839,9 @@ struct Run
             uint8_t proof_size,
             int device)
     {
+        assert(device >= 0);
+        assert(device < TOTAL_DEVICES);
+
         std::vector<u64> buffer(150000);
 
         u32 host_a[256 * 256];
@@ -925,37 +959,6 @@ struct Run
         return false;
     }
 };
-
-int SetupBuffers() {
-    int count = 0;
-    cudaGetDeviceCount(&count);
-
-    if(!buffer_a.empty()) {
-        return count;
-    }
-
-    assert(buffer_a.empty());
-    assert(buffer_b.empty());
-    assert(indexes_e.empty());
-    assert(indexes_e2.empty());
-    assert(recovery.empty());
-
-    buffer_a.resize(count, nullptr);
-    buffer_b.resize(count, nullptr);
-    indexes_e.resize(count, nullptr);
-    indexes_e2.resize(count, nullptr);
-    recovery.resize(count, nullptr);
-    return count;
-}
-
-int CudaDevices()
-{
-    int count = 0;
-    cudaGetDeviceCount(&count);
-    return count;
-}
-
-int SETUP_BUFFERS = SetupBuffers();
 
 size_t CudaGetFreeMemory(int device){
     size_t free, total;
