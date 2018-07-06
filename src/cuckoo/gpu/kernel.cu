@@ -926,33 +926,36 @@ struct Run
     }
 };
 
-void SetupBuffers() {
+int SetupBuffers() {
+    int count = 0;
+    cudaGetDeviceCount(&count);
+
+    if(!buffer_a.empty()) {
+        return count;
+    }
+
     assert(buffer_a.empty());
     assert(buffer_b.empty());
     assert(indexes_e.empty());
     assert(indexes_e2.empty());
     assert(recovery.empty());
 
-    int count = 0;
-    cudaGetDeviceCount(&count);
-
     buffer_a.resize(count, nullptr);
     buffer_b.resize(count, nullptr);
     indexes_e.resize(count, nullptr);
     indexes_e2.resize(count, nullptr);
     recovery.resize(count, nullptr);
+    return count;
 }
 
 int CudaDevices()
 {
-    if(buffer_a.empty()) {
-        SetupBuffers();
-    }
-
     int count = 0;
     cudaGetDeviceCount(&count);
     return count;
 }
+
+int SETUP_BUFFERS = SetupBuffers();
 
 size_t CudaGetFreeMemory(int device){
     size_t free, total;
