@@ -954,8 +954,6 @@ int CudaDevices()
     return count;
 }
 
-int tmp = CudaDevices();
-
 size_t CudaGetFreeMemory(int device){
     size_t free, total;
 
@@ -966,19 +964,23 @@ size_t CudaGetFreeMemory(int device){
     return free;
 }
 
-struct GPUInfo {
-    size_t id;
-    std::string title;
-    long long int total_memory;
-};
-
-std::vector<GPUInfo> GPUsInfo()
+namespace merit
 {
-    std::vector<GPUInfo> res{};
+    struct GPUInfo
+    {
+        size_t id;
+        std::string title;
+        long long int total_memory;
+    };
+}
+
+std::vector<merit::GPUInfo> GPUsInfo()
+{
+    std::vector<merit::GPUInfo> res{};
 
     int devices = CudaDevices();
     for (int i = 0; i < devices; i++) {
-        GPUInfo item{};
+        merit::GPUInfo item{};
         cudaDeviceProp prop;
         cudaGetDeviceProperties(&prop, i);
         item.id = i;
@@ -986,14 +988,6 @@ std::vector<GPUInfo> GPUsInfo()
         item.total_memory = prop.totalGlobalMem;
 
         res.push_back(item);
-
-//        printf("Device Number: %d\n", i);
-//        printf("  Device name: %s\n", prop.name);
-//        printf("  Global memory: %d\n", prop.totalGlobalMem / 1024);
-//        printf("  Shared memory: %d\n", prop.sharedMemPerBlock);
-//        printf("  Constant memory: %d\n", prop.totalConstMem);
-//        printf("  Max grid dimensions: %d\n", prop.maxGridSize[0]);
-//        printf("  Threads per block: %d\n", prop.maxThreadsPerBlock);
     }
 
     return res;
