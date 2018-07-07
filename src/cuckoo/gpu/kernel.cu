@@ -60,8 +60,8 @@ struct Params {
     const static u32 CUCKOO_SIZE = NNODES >> IDXSHIFT;
     const static u32 CUCKOO_MASK = CUCKOO_SIZE - 1;
     const static u32 KEYBITS = 64-NODEBITS;
-    const static u64 KEYMASK = (1L << KEYBITS) - 1;
-    const static u64 MAXDRIFT = 1L << (KEYBITS - IDXSHIFT);
+    const static u64 KEYMASK = (1LL << KEYBITS) - 1;
+    const static u64 MAXDRIFT = 1LL << (KEYBITS - IDXSHIFT);
 };
 
 struct SipKeys
