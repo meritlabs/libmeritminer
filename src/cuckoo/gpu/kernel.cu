@@ -60,8 +60,8 @@ struct Params {
     const static u32 CUCKOO_SIZE = NNODES >> IDXSHIFT;
     const static u32 CUCKOO_MASK = CUCKOO_SIZE - 1;
     const static u32 KEYBITS = 64-NODEBITS;
-    const static u64 KEYMASK = (1L << KEYBITS) - 1;
-    const static u64 MAXDRIFT = 1L << (KEYBITS - IDXSHIFT);
+    const static u64 KEYMASK = (1LL << KEYBITS) - 1;
+    const static u64 MAXDRIFT = 1LL << (KEYBITS - IDXSHIFT);
 };
 
 struct SipKeys
@@ -795,6 +795,37 @@ bool FindCycles(
     return false;
 }
 
+int CudaDevices()
+{
+    int count = 0;
+    cudaGetDeviceCount(&count);
+    return count;
+}
+
+int SetupBuffers() {
+    int count = CudaDevices();
+
+    if(!buffer_a.empty()) {
+        return count;
+    }
+
+    assert(buffer_a.empty());
+    assert(buffer_b.empty());
+    assert(indexes_e.empty());
+    assert(indexes_e2.empty());
+    assert(recovery.empty());
+
+    buffer_a.resize(count, nullptr);
+    buffer_b.resize(count, nullptr);
+    indexes_e.resize(count, nullptr);
+    indexes_e2.resize(count, nullptr);
+    recovery.resize(count, nullptr);
+
+    return count;
+}
+
+const int TOTAL_DEVICES = SetupBuffers();
+
 using Cycle = std::set<uint32_t>;
 
 template <class offset_t, uint8_t EDGEBITS, uint8_t XBITS>
@@ -808,6 +839,9 @@ struct Run
             uint8_t proof_size,
             int device)
     {
+        assert(device >= 0);
+        assert(device < TOTAL_DEVICES);
+
         std::vector<u64> buffer(150000);
 
         u32 host_a[256 * 256];
@@ -926,36 +960,6 @@ struct Run
     }
 };
 
-void SetupBuffers() {
-    assert(buffer_a.empty());
-    assert(buffer_b.empty());
-    assert(indexes_e.empty());
-    assert(indexes_e2.empty());
-    assert(recovery.empty());
-
-    int count = 0;
-    cudaGetDeviceCount(&count);
-
-    buffer_a.resize(count, nullptr);
-    buffer_b.resize(count, nullptr);
-    indexes_e.resize(count, nullptr);
-    indexes_e2.resize(count, nullptr);
-    recovery.resize(count, nullptr);
-}
-
-int CudaDevices()
-{
-    if(buffer_a.empty()) {
-        SetupBuffers();
-    }
-
-    int count = 0;
-    cudaGetDeviceCount(&count);
-    return count;
-}
-
-int tmp = CudaDevices();
-
 size_t CudaGetFreeMemory(int device){
     size_t free, total;
 
@@ -966,19 +970,23 @@ size_t CudaGetFreeMemory(int device){
     return free;
 }
 
-struct GPUInfo {
-    size_t id;
-    std::string title;
-    long long int total_memory;
-};
-
-std::vector<GPUInfo> GPUsInfo()
+namespace merit
 {
-    std::vector<GPUInfo> res{};
+    struct GPUInfo
+    {
+        size_t id;
+        std::string title;
+        long long int total_memory;
+    };
+}
+
+std::vector<merit::GPUInfo> GPUsInfo()
+{
+    std::vector<merit::GPUInfo> res{};
 
     int devices = CudaDevices();
     for (int i = 0; i < devices; i++) {
-        GPUInfo item{};
+        merit::GPUInfo item{};
         cudaDeviceProp prop;
         cudaGetDeviceProperties(&prop, i);
         item.id = i;
@@ -986,14 +994,6 @@ std::vector<GPUInfo> GPUsInfo()
         item.total_memory = prop.totalGlobalMem;
 
         res.push_back(item);
-
-//        printf("Device Number: %d\n", i);
-//        printf("  Device name: %s\n", prop.name);
-//        printf("  Global memory: %d\n", prop.totalGlobalMem / 1024);
-//        printf("  Shared memory: %d\n", prop.sharedMemPerBlock);
-//        printf("  Constant memory: %d\n", prop.totalConstMem);
-//        printf("  Max grid dimensions: %d\n", prop.maxGridSize[0]);
-//        printf("  Threads per block: %d\n", prop.maxThreadsPerBlock);
     }
 
     return res;

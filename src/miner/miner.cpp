@@ -249,7 +249,14 @@ namespace merit
 
             std::vector<std::future<void>> jobs;
             for(auto& worker : _workers) {
-                jobs.push_back(_pool.push([&worker](int id){ worker.run(); }));
+                jobs.push_back(_pool.push(
+                            [&worker](int id){ 
+                                try {
+                                    worker.run(); 
+                                } catch( std::exception& e) {
+                                    std::cerr << "mining worker " << id << " error: " << e.what() << std::endl;
+                                }
+                            }));
             }
 
             for(auto& j: jobs) { j.get();}
