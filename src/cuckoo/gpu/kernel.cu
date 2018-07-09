@@ -72,8 +72,10 @@ struct SipKeys
     unsigned long long k3;
 };
 
-const auto DUCK_SIZE_A = 130LL;
-const auto DUCK_SIZE_B = 85LL;
+// const auto DUCK_SIZE_A = 130LL;
+// const auto DUCK_SIZE_B = 85LL;
+const auto DUCK_SIZE_A = 30LL;
+const auto DUCK_SIZE_B = 20LL;
 
 const auto DUCK_A_EDGES = (DUCK_SIZE_A * 1024LL);
 const auto DUCK_A_EDGES_64 = (DUCK_A_EDGES * 64LL);
