@@ -49,6 +49,8 @@ std::pair<int, int> determine_utilization(int cores)
 
 int main(int argc, char** argv) 
 {
+    merit::init();
+
     po::options_description desc("Allowed options");
     std::string url;
     std::vector<int> gpu_devices;

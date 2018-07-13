@@ -26,7 +26,7 @@ namespace merit
     void disconnect_stratum(Context* c);
     bool is_stratum_connected(Context* c);
 
-    void init_logging();
+    void init();
     bool run_stratum(Context*);
     void stop_stratum(Context*);
 

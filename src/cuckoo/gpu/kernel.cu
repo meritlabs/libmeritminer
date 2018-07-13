@@ -833,8 +833,8 @@ int CudaDevices()
     return count;
 }
 
-int SetupBuffers() {
-    int count = CudaDevices();
+int SetupKernelBuffers() {
+    const int count = CudaDevices();
 
     if(!buffer_a.empty()) {
         return count;
@@ -855,8 +855,6 @@ int SetupBuffers() {
     return count;
 }
 
-const int TOTAL_DEVICES = SetupBuffers();
-
 using Cycle = std::set<uint32_t>;
 
 template <class offset_t, uint8_t EDGEBITS, uint8_t XBITS>
@@ -871,7 +869,7 @@ struct Run
             int device)
     {
         assert(device >= 0);
-        assert(device < TOTAL_DEVICES);
+        assert(device < buffer_a.size());
 
         std::vector<u64> buffer(150000);
 
