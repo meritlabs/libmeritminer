@@ -38,6 +38,9 @@
 #include <atomic>
 #include <chrono>
 
+//forward declare SetupBuffers which is in kernel.cu
+int SetupKernelBuffers();
+
 namespace merit
 {
 
@@ -121,8 +124,9 @@ namespace merit
         return c->stratum.connected();
     }
     
-    void init_logging()
+    void init()
     {
+        ::SetupKernelBuffers();
     }
 
     bool run_stratum(Context* c)
@@ -314,6 +318,7 @@ namespace merit
     std::vector<merit::GPUInfo> gpus_info(){
         return miner::GPUInfo();
     };
+
 
 }
 
