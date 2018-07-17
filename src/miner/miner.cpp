@@ -41,12 +41,13 @@
 #ifdef CUDA_ENABLED
 
 using Cycle = std::set<uint32_t>;
+using Cycles = std::vector<Cycle>;
 
-bool FindCycleOnCudaDevice(
+bool FindCyclesOnCudaDevice(
         uint64_t sip_k0, uint64_t sip_k1,
         uint8_t edgebits,
         uint8_t proof_size,
-        Cycle& cycle,
+        Cycles& cycles,
         int device);
 
 int CudaDevices();
@@ -413,19 +414,19 @@ namespace merit
                 util::to_hex(hash, hex_header_hash);
 
                 uint8_t proofsize = 42;
-                std::set<uint32_t> cycle;
+                Cycles cycles;
 
                 uint8_t edgebits = work->data[20] >> 24;
 
 #if CUDA_ENABLED
                 bool found = false;
                 if(!_gpu_device) {
-                    found = cuckoo::FindCycle(
+                    found = cuckoo::FindCycles(
                             hex_header_hash.data(),
                             hex_header_hash.size(),
                             edgebits,
                             CUCKOO_PROOF_SIZE,
-                            cycle,
+                            cycles,
                             _threads,
                             _pool);
                 } else {
@@ -438,20 +439,20 @@ namespace merit
                             hex_header_hash.size(), 0, 0);
                     crypto::setkeys(&keys, hdrkey);
 
-                    found = FindCycleOnCudaDevice(
+                    found = FindCyclesOnCudaDevice(
                             keys.k0, keys.k1,
                             edgebits,
                             CUCKOO_PROOF_SIZE,
-                            cycle,
+                            cycles,
                             _id);
                 }
 #else
-                bool found = cuckoo::FindCycle(
+                bool found = cuckoo::FindCycles(
                         hex_header_hash.data(),
                         hex_header_hash.size(),
                         edgebits,
                         CUCKOO_PROOF_SIZE,
-                        cycle,
+                        cycles,
                         _threads,
                         _pool);
 #endif
@@ -460,28 +461,32 @@ namespace merit
                 stat.attempts++;
 
                 if(found) {
-                    stat.cycles++;
+                    stat.cycles+=cycles.size();
 
-                    std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
-                    std::array<uint32_t, 8> cycle_hash;
-                    std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;
-                    cycle_with_size[0] = CUCKOO_PROOF_SIZE;
-                    std::copy(
-                            reinterpret_cast<const uint8_t*>(work->cycle.data()),
-                            reinterpret_cast<const uint8_t*>(work->cycle.data()) + sizeof(uint32_t) * work->cycle.size(),
-                            cycle_with_size.begin()+1);
+                    int idx = 0;
+                    for(const auto& cycle: cycles) {
+                        std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
+                        std::array<uint32_t, 8> cycle_hash;
+                        std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;
+                        cycle_with_size[0] = CUCKOO_PROOF_SIZE;
+                        std::copy(
+                                reinterpret_cast<const uint8_t*>(work->cycle.data()),
+                                reinterpret_cast<const uint8_t*>(work->cycle.data()) + sizeof(uint32_t) * work->cycle.size(),
+                                cycle_with_size.begin()+1);
 
-                    util::double_sha256(
-                            reinterpret_cast<unsigned char*>(cycle_hash.data()),
-                            cycle_with_size.data(),
-                            cycle_with_size.size());
+                        util::double_sha256(
+                                reinterpret_cast<unsigned char*>(cycle_hash.data()),
+                                cycle_with_size.data(),
+                                cycle_with_size.size());
 
-                    std::string cycle_hash_hex;
-                    util::to_hex(cycle_hash, cycle_hash_hex);
-                    std::cerr << "info: " << "(" << _id << ") found cycle: " << cycle_hash_hex << std::endl;
-                    if(target_test(cycle_hash, work->target)) {
-                        stat.shares++;
-                        _miner.submit_work(*work);
+                        std::string cycle_hash_hex;
+                        util::to_hex(cycle_hash, cycle_hash_hex);
+                        std::cerr << "info: " << "(" << _id << ") found cycle (" << idx << "): " << cycle_hash_hex << std::endl;
+                        if(target_test(cycle_hash, work->target)) {
+                            stat.shares++;
+                            _miner.submit_work(*work);
+                        }
+                        idx++;
                     }
                 }
             }

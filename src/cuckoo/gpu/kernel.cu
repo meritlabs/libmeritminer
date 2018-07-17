@@ -72,6 +72,9 @@ typedef u64 nonce_t;
 #define MAXPROOFLENGTH 84
 #define BIGEPS 5 / 64
 #define TRIMFRAC256 184
+#define BKTGRAN 32
+
+const int CTHREADS = 1024;
 
 template <class offset_t, uint8_t EDGEBITS_IN, uint8_t XBITS_IN>
 struct Params {
@@ -91,6 +94,17 @@ struct Params {
     const static u32 KEYBITS = 64-NODEBITS;
     const static u64 KEYMASK = (1LL << KEYBITS) - 1;
     const static u64 MAXDRIFT = 1LL << (KEYBITS - IDXSHIFT);
+
+    const static u32 GABLOCKS = 512;
+    const static u32 GATPB = 64;
+    const static u32 GBBLOCKS = 32*BKTGRAN;
+    const static u32 GBTPB = 64;
+    const static u32 TRBLOCKS = 4096;
+    const static u16 TRTPB = 1024;
+    const static u16 TLBLOCKS = 4096;
+    const static u16 TLTPB = 1024;
+    const static u16 RBLOCKS = 512;
+    const static u16 RTPB = 512;
 };
 
 struct SipKeys
@@ -114,7 +128,6 @@ const auto buffer_size = DUCK_SIZE_A * 1024 * 4096 * 8;
 const auto buffer_size_2 = DUCK_SIZE_B * 1024 * 4096 * 8;
 const auto indexes_size = 128 * 128 * 4;
 
-const int CTHREADS = 1024;
 const int BKTMASK4K = (4096-1);
 
 
@@ -325,7 +338,6 @@ __global__  void FluffySeed2A(
 
 }
 
-#define BKTGRAN 32
 __global__  void FluffySeed2B(
         const  uint2 *__restrict__  source,
         ulonglong4 *__restrict__  destination,
@@ -465,19 +477,19 @@ __global__   void FluffyRound(
     const int lid = threadIdx.x;
     const int group = blockIdx.x;
 
-    __shared__ u32 ecounters[8192];
+    __shared__ u32 ecounters[8*CTHREADS];
 
     const int edges_in_bucket = min(src_indexes[group], BKTINSIZE);
     const int loops = (edges_in_bucket + CTHREADS) / CTHREADS;
 
     ecounters[lid] = 0;
-    ecounters[lid + 1024] = 0;
-    ecounters[lid + (1024 * 2)] = 0;
-    ecounters[lid + (1024 * 3)] = 0;
-    ecounters[lid + (1024 * 4)] = 0;
-    ecounters[lid + (1024 * 5)] = 0;
-    ecounters[lid + (1024 * 6)] = 0;
-    ecounters[lid + (1024 * 7)] = 0;
+    ecounters[lid + CTHREADS] = 0;
+    ecounters[lid + (CTHREADS * 2)] = 0;
+    ecounters[lid + (CTHREADS * 3)] = 0;
+    ecounters[lid + (CTHREADS * 4)] = 0;
+    ecounters[lid + (CTHREADS * 5)] = 0;
+    ecounters[lid + (CTHREADS * 6)] = 0;
+    ecounters[lid + (CTHREADS * 7)] = 0;
 
     __syncthreads();
 
@@ -546,6 +558,8 @@ __global__   void /*Magical*/FluffyTail/*Pony*/(
     }
 }
 
+std::vector<bool> device_set;
+std::vector<u64> buffer_h;
 std::vector<int*> buffer_a;
 std::vector<int*> buffer_b;
 std::vector<int*> indexes_e;
@@ -560,14 +574,14 @@ bool TrimEdges(
         int* indexes_e,
         int* indexes_e2)
 {
-    FluffySeed2A<P> << < 512, 64 >> > (
+    FluffySeed2A<P> << < P::GABLOCKS, P::GATPB >> > (
             k.k0, k.k1, k.k2, k.k3,
             (ulonglong4 *)buffer_a,
             (int *)indexes_e2);
 
     cudaDeviceSynchronize();
 
-    FluffySeed2B << < 32 * BKTGRAN, 64 >> > (
+    FluffySeed2B << < P::GBBLOCKS, P::GBTPB >> > (
             (const uint2 *)buffer_a,
             (ulonglong4 *)buffer_b,
             (const int *)indexes_e2,
@@ -580,7 +594,7 @@ bool TrimEdges(
             buffer_size / 2,
             cudaMemcpyDeviceToDevice);
 
-    FluffySeed2B << < 32 * BKTGRAN, 64 >> > (
+    FluffySeed2B << < P::GBBLOCKS, P::GBTPB >> > (
             (const uint2 *)buffer_a,
             (ulonglong4 *)buffer_b,
             (const int *)indexes_e2,
@@ -594,7 +608,7 @@ bool TrimEdges(
 
 
     cudaMemset(indexes_e2, 0, indexes_size);
-    FluffyRound<P, DUCK_A_EDGES, DUCK_B_EDGES> << < 4096, 1024 >> > (
+    FluffyRound<P, DUCK_A_EDGES, DUCK_B_EDGES> << < P::TRBLOCKS, P::TRTPB >> > (
             (const uint2 *)buffer_a,
             (uint2 *)buffer_b,
             (const int *)indexes_e,
@@ -605,14 +619,14 @@ bool TrimEdges(
     for (int i = 0; i < 80; i++)
     {
         cudaMemset(indexes_e, 0, indexes_size);
-        FluffyRound<P, DUCK_B_EDGES, DUCK_B_EDGES> << < 4096, 1024 >> > (
+        FluffyRound<P, DUCK_B_EDGES, DUCK_B_EDGES> << < P::TRBLOCKS, P::TRTPB >> > (
                 (const uint2 *)buffer_b,
                 (uint2 *)buffer_a,
                 (const int *)indexes_e2,
                 (int *)indexes_e);
 
         cudaMemset(indexes_e2, 0, indexes_size);
-        FluffyRound<P, DUCK_B_EDGES, DUCK_B_EDGES> << < 4096, 1024 >> > (
+        FluffyRound<P, DUCK_B_EDGES, DUCK_B_EDGES> << < P::TRBLOCKS, P::TRTPB >> > (
                 (const uint2 *)buffer_a,
                 (uint2 *)buffer_b,
                 (const int *)indexes_e,
@@ -622,7 +636,7 @@ bool TrimEdges(
     cudaMemset(indexes_e, 0, indexes_size);
     cudaDeviceSynchronize();
 
-    FluffyTail << < 4096, 1024 >> > (
+    FluffyTail << < P::TLBLOCKS, P::TLTPB >> > (
             (const uint2 *)buffer_b,
             (uint2 *)buffer_a,
             (const int *)indexes_e2,
@@ -752,7 +766,7 @@ void Solution(
     cudaDeviceSynchronize();
 
     cudaMemset(indexes_e2, 0, indexes_size);
-    FluffyRecovery<P> << < 512, 256 >> >(
+    FluffyRecovery<P> << < P::RBLOCKS, P::RTPB >> >(
             keys.k0, keys.k1, keys.k2, keys.k3,
             proof_size,
             (ulonglong4 *)buffer_a,
@@ -765,11 +779,13 @@ void Solution(
     }
 }
 
+using Cycle = std::set<uint32_t>;
+using Cycles = std::vector<Cycle>;
 
 template <class P>
 bool FindCycles(
         const SipKeys& keys,
-        std::set<uint32_t>& nonces, 
+        Cycles& cycles, 
         u64* edges,
         const u32 size,
         uint8_t proof_size,
@@ -797,10 +813,11 @@ bool FindCycles(
                 const u32 len = nu + nv + 1;
 
                 if (len == proof_size) {
+                    Cycle cycle;
                     Solution<P>(
                             proof_size,
                             keys,
-                            nonces,
+                            cycle,
                             us,
                             nu,
                             vs,
@@ -808,7 +825,7 @@ bool FindCycles(
                             buffer_a,
                             indexes_e2,
                             recovery);
-                    return true;
+                    cycles.emplace_back(cycle);
                 }
             } else if (nu < nv) {
                 while (nu--) {
@@ -823,7 +840,7 @@ bool FindCycles(
             }
         }
     }
-    return false;
+    return !cycles.empty();
 }
 
 int CudaDevices()
@@ -833,6 +850,7 @@ int CudaDevices()
     return count;
 }
 
+const size_t BUFFER_H_SIZE = 150000;
 int SetupKernelBuffers() {
     const int count = CudaDevices();
 
@@ -840,12 +858,15 @@ int SetupKernelBuffers() {
         return count;
     }
 
+    assert(buffer_h.empty());
     assert(buffer_a.empty());
     assert(buffer_b.empty());
     assert(indexes_e.empty());
     assert(indexes_e2.empty());
     assert(recovery.empty());
 
+    device_set.resize(count, false);
+    buffer_h.resize(count * BUFFER_H_SIZE);
     buffer_a.resize(count, nullptr);
     buffer_b.resize(count, nullptr);
     indexes_e.resize(count, nullptr);
@@ -863,7 +884,7 @@ struct Run
     using P = Params<offset_t, EDGEBITS, XBITS>;
 
     bool operator()(
-            Cycle& cycle,
+            Cycles& cycles,
             uint64_t sip_k0, uint64_t sip_k1,
             uint8_t proof_size,
             int device)
@@ -871,20 +892,23 @@ struct Run
         assert(device >= 0);
         assert(device < buffer_a.size());
 
-        std::vector<u64> buffer(150000);
-
         u32 host_a[256 * 256];
 
         size_t free_device_mem = 0;
         size_t total_device_mem = 0;
 
-        auto status = cudaSetDevice(device);
+        cudaError_t status;
         std::ostringstream err_msg;
 
-        if (status != cudaSuccess) {
-            err_msg << "An error occurred while trying to set the CUDA device: ";
-            err_msg << cudaGetErrorString(status);
-            throw CudaSetDeviceException(err_msg.str());
+        if(!device_set[device]) {
+            status = cudaSetDevice(device);
+
+            if (status != cudaSuccess) {
+                err_msg << "An error occurred while trying to set the CUDA device: ";
+                err_msg << cudaGetErrorString(status);
+                throw CudaSetDeviceException(err_msg.str());
+            }
+            device_set[device] = true;
         }
 
         if(buffer_a[device] == nullptr) {
@@ -966,7 +990,7 @@ struct Run
 
         if(pos > 0 && pos < 500000) {
             cudaMemcpy(
-                    &((u64*)buffer.data())[0],
+                    &buffer_h[device*BUFFER_H_SIZE],
                     &((u64*)buffer_a[device])[0],
                     pos * 8,
                     cudaMemcpyDeviceToHost);
@@ -977,8 +1001,8 @@ struct Run
         if(pos > 0 && pos < 500000) {
             return FindCycles<P>(
                     keys,
-                    cycle,
-                    reinterpret_cast<u64*>(buffer.data()),
+                    cycles,
+                    &buffer_h[device*BUFFER_H_SIZE],
                     pos,
                     proof_size,
                     buffer_a[device],
@@ -1029,46 +1053,46 @@ std::vector<merit::GPUInfo> GPUsInfo()
 }
 
 
-bool FindCycleOnCudaDevice(
+bool FindCyclesOnCudaDevice(
         uint64_t sip_k0, uint64_t sip_k1,
         uint8_t edgebits,
         uint8_t proof_size,
-        Cycle& cycle,
+        Cycles& cycles,
         int device)
 {
     switch (edgebits) {
         case 16:
-            return Run<uint32_t, 16u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 16u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 17:
-            return Run<uint32_t, 17u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 17u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 18:
-            return Run<uint32_t, 18u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 18u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 19:
-            return Run<uint32_t, 19u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 19u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 20:
-            return Run<uint32_t, 20u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 20u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 21:
-            return Run<uint32_t, 21u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 21u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 22:
-            return Run<uint32_t, 22u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 22u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 23:
-            return Run<uint32_t, 23u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 23u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 24:
-            return Run<uint32_t, 24u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 24u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 25:
-            return Run<uint32_t, 25u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 25u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 26:
-            return Run<uint32_t, 26u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 26u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 27:
-            return Run<uint32_t, 27u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 27u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 28:
-            return Run<uint32_t, 28u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 28u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 29:
-            return Run<uint32_t, 29u, 6u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint32_t, 29u, 6u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 30:
-            return Run<uint64_t, 30u, 8u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint64_t, 30u, 8u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         case 31:
-            return Run<uint64_t, 31u, 8u>{}(cycle, sip_k0, sip_k1, proof_size, device);
+            return Run<uint64_t, 31u, 8u>{}(cycles, sip_k0, sip_k1, proof_size, device);
         default:
             std::stringstream e;
             e << __func__ << ": Edgebits equal to " << edgebits << " is not supported";
