@@ -42,8 +42,8 @@
 #include <thread>
 #include <atomic>
 
-#include "util/util.hpp"
-#include "util/work.hpp"
+#include "merit/util/util.hpp"
+#include "merit/util/work.hpp"
 
 namespace pt = boost::property_tree;
 namespace asio = boost::asio;

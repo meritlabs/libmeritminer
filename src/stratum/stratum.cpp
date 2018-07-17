@@ -28,7 +28,7 @@
  * this exception statement from all source files in the program, then
  * also delete it here.
  */
-#include "stratum/stratum.hpp"
+#include "merit/stratum/stratum.hpp"
 
 #include <chrono>
 #include <boost/property_tree/ptree.hpp>

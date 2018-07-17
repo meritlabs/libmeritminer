@@ -29,8 +29,8 @@
  * also delete it here.
  */
 #include "merit/miner.hpp"
-#include "stratum/stratum.hpp"
-#include "miner/miner.hpp"
+#include "merit/stratum/stratum.hpp"
+#include "merit/miner/miner.hpp"
 
 #include <iostream>
 #include <memory>
