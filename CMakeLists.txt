@@ -23,12 +23,14 @@ add_library(boost_thread STATIC IMPORTED)
 set_target_properties(boost_thread PROPERTIES IMPORTED_LOCATION ${Boost_THREAD_LIBRARY_RELEASE})
 
 include_directories(include)
-add_definitions(-fPIC)
+
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fPIC> $<$<COMPILE_LANGUAGE:C>:-fPIC>)
 
 find_package(CUDA)
 if(CUDA_FOUND)
     enable_language(CUDA)
     add_definitions(-DCUDA_ENABLED)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:"-Xcompiler \"-fPIC\"">)
 
     link_directories(${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
     include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
