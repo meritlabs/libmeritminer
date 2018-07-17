@@ -23,14 +23,7 @@ add_library(boost_thread STATIC IMPORTED)
 set_target_properties(boost_thread PROPERTIES IMPORTED_LOCATION ${Boost_THREAD_LIBRARY_RELEASE})
 
 include_directories(include)
-include_directories(src/)
-include_directories(src/crypto)
-include_directories(src/cuckoo)
-include_directories(src/blake2)
-include_directories(src/stratum)
-include_directories(src/miner)
-include_directories(src/util)
-include_directories(src/PicoSHA2)
+add_definitions(-fPIC)
 
 find_package(CUDA)
 if(CUDA_FOUND)
@@ -41,7 +34,12 @@ if(CUDA_FOUND)
     include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
     add_library(cuda STATIC IMPORTED)
     set_target_properties(cuda PROPERTIES IMPORTED_LOCATION ${CUDA_cudart_static_LIBRARY})
-    set(COMBINE_LIBS $<TARGET_FILE:meritminer> $<TARGET_FILE:boost_system> $<TARGET_FILE:boost_program_options> $<TARGET_FILE:boost_thread> $<TARGET_FILE:cuda>)
+    set(COMBINE_LIBS 
+        $<TARGET_FILE:meritminer>
+        $<TARGET_FILE:boost_system>
+        $<TARGET_FILE:boost_program_options>
+        $<TARGET_FILE:boost_thread>
+        $<TARGET_FILE:cuda>)
     set(FAT_OBJS *.cu.o *.o)
 
     add_library(meritminer STATIC
@@ -54,7 +52,12 @@ if(CUDA_FOUND)
         src/miner/miner.cpp
         src/util/util.cpp)
 else()
-    set(COMBINE_LIBS $<TARGET_FILE:meritminer> $<TARGET_FILE:boost_system> $<TARGET_FILE:boost_program_options> $<TARGET_FILE:boost_thread>)
+    set(COMBINE_LIBS 
+        $<TARGET_FILE:meritminer>
+        $<TARGET_FILE:boost_system>
+        $<TARGET_FILE:boost_program_options>
+        $<TARGET_FILE:boost_thread>)
+
     set(FAT_OBJS *.o)
     add_library(meritminer STATIC 
         src/public.cpp
@@ -95,13 +98,29 @@ else()
 	target_link_libraries(merit-minerd fatmeritminer pthread rt dl)
 endif()
 
-set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
-
 install(TARGETS merit-minerd meritminer
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
-            PUBLIC_HEADER DESTINATION include/merit
             ARCHIVE DESTINATION lib)
 install(FILES ${FAT_LIB} DESTINATION lib)
+
+file(GLOB H_PUB include/merit/*.hpp)
+file(GLOB H_BLAKE include/merit/blake/*.h)
+file(GLOB H_CRYPTO include/merit/crypto/*.h)
+file(GLOB H_CTPL include/merit/ctpl/*.h)
+file(GLOB H_CUCKOO include/merit/cuckoo/*.h)
+file(GLOB H_MINER include/merit/miner/*.hpp) 
+file(GLOB H_PICO include/merit/PicoSHA2/*.h)
+file(GLOB H_STRATUM include/merit/stratum/*.hpp)
+file(GLOB H_UTIL include/merit/util/*.hpp)
+install(FILES ${H_PUB} DESTINATION include/merit)
+install(FILES ${H_BLAKE} DESTINATION include/merit/blake)
+install(FILES ${H_CRYPTO} DESTINATION include/merit/crypto)
+install(FILES ${H_CTPL} DESTINATION include/merit/ctpl)
+install(FILES ${H_CUCKOO} DESTINATION include/merit/cuckoo)
+install(FILES ${H_MINER} DESTINATION include/merit/miner)
+install(FILES ${H_PICO} DESTINATION include/merit/PicoSHA2)
+install(FILES ${H_STRATUM} DESTINATION include/merit/stratum)
+install(FILES ${H_UTIL} DESTINATION include/merit/util)
 include(CPack)
 

@@ -28,10 +28,10 @@
  * this exception statement from all source files in the program, then
  * also delete it here.
  */
-#include "util/util.hpp"
+#include "merit/util/util.hpp"
 
 #include <array>
-#include "PicoSHA2/picosha2.h"
+#include "merit/PicoSHA2/picosha2.h"
 #include <array>
 
 namespace merit
