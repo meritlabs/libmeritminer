@@ -62,6 +62,14 @@ std::vector<merit::GPUInfo> GPUsInfo(){
     return std::vector<merit::GPUInfo>();
 };
 
+size_t CudaGetFreeMemory(int device) {
+    return 0;
+}
+
+int SetupKernelBuffers() { 
+    return 0;
+}
+
 #endif
 
 namespace merit
