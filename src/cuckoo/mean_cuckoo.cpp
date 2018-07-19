@@ -85,7 +85,6 @@ namespace merit
 {
     namespace cuckoo
     {
-
         const int MAXPATHLEN = 8192;
         /** Minimum number of edge bits for cuckoo miner - block.nEdgeBits value */
         const std::uint16_t MIN_EDGE_BITS = 16;
@@ -1174,6 +1173,7 @@ namespace merit
                     {
                         std::uint32_t us[MAXPATHLEN], vs[MAXPATHLEN];
 
+                        bool found = false;
                         for (std::uint32_t vx = 0; vx < P::NX; vx++) {
                             for (std::uint32_t ux = 0; ux < P::NX; ux++) {
                                 zbucketZ& zb = trimmer->buckets[ux][vx];
@@ -1196,7 +1196,7 @@ namespace merit
                                             const std::uint32_t len = nu + nv + 1;
                                             if (len == proofSize) {
                                                 solution(us, nu, vs, nv);
-                                                return true;
+                                                found = true;
                                             }
                                         } else if (nu < nv) {
                                             while (nu--)
@@ -1212,7 +1212,7 @@ namespace merit
                             }
                         }
 
-                        return false;
+                        return found;
                     }
 
                     bool solve()
@@ -1328,7 +1328,7 @@ namespace merit
                     const char* hex_header_hash,
                     uint32_t hex_header_hash_len,
                     std::uint8_t proofSize,
-                    std::set<std::uint32_t>& cycle,
+                    Cycles& cycles,
                     size_t threads,
                     ctpl::thread_pool& pool)
             {
@@ -1349,38 +1349,43 @@ namespace merit
                 bool found = ctx.solve();
 
                 if (found) {
-                    copy(ctx.sols.begin(), ctx.sols.begin() + ctx.sols.size(), inserter(cycle, cycle.begin()));
+                    for(int i = 0; i < ctx.sols.size() / proofSize; i++) {
+                        Cycle cycle;
+                        copy(ctx.sols.begin()+ (i * proofSize), ctx.sols.begin() + proofSize, inserter(cycle, cycle.begin()));
+                        cycles.emplace_back(cycle);
+                    }
+
                 }
 
                 return found;
             }
 
-        bool FindCycle(
+        bool FindCycles(
                 const char* hex_header_hash,
                 uint32_t hex_header_hash_len,
                 std::uint8_t edgeBits,
                 std::uint8_t proofSize,
-                std::set<std::uint32_t>& cycle,
+                Cycles& cycles,
                 size_t threads,
                 ctpl::thread_pool& pool)
         {
             switch (edgeBits) {
-                case 16: return run<std::uint32_t, 16u, 0u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 17: return run<std::uint32_t, 17u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 18: return run<std::uint32_t, 18u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 19: return run<std::uint32_t, 19u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 20: return run<std::uint32_t, 20u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 21: return run<std::uint32_t, 21u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 22: return run<std::uint32_t, 22u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 23: return run<std::uint32_t, 23u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 24: return run<std::uint32_t, 24u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 25: return run<std::uint32_t, 25u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 26: return run<std::uint32_t, 26u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 27: return run<std::uint32_t, 27u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 28: return run<std::uint32_t, 28u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 29: return run<std::uint32_t, 29u, 7u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 30: return run<std::uint64_t, 30u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
-                case 31: return run<std::uint64_t, 31u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycle, threads, pool);
+                case 16: return run<std::uint32_t, 16u, 0u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 17: return run<std::uint32_t, 17u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 18: return run<std::uint32_t, 18u, 1u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 19: return run<std::uint32_t, 19u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 20: return run<std::uint32_t, 20u, 2u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 21: return run<std::uint32_t, 21u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 22: return run<std::uint32_t, 22u, 3u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 23: return run<std::uint32_t, 23u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 24: return run<std::uint32_t, 24u, 4u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 25: return run<std::uint32_t, 25u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 26: return run<std::uint32_t, 26u, 5u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 27: return run<std::uint32_t, 27u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 28: return run<std::uint32_t, 28u, 6u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 29: return run<std::uint32_t, 29u, 7u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 30: return run<std::uint64_t, 30u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
+                case 31: return run<std::uint64_t, 31u, 8u>(hex_header_hash, hex_header_hash_len, proofSize, cycles, threads, pool);
 
                 default:
                          std::stringstream s;

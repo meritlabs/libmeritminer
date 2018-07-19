@@ -40,13 +40,16 @@ namespace merit
 {
     namespace cuckoo
     {
+        using Cycle = std::set<uint32_t>;
+        using Cycles = std::vector<Cycle>;
+
         // Find proofsize-length cuckoo cycle in random graph
-        bool FindCycle(
+        bool FindCycles(
                 const char* hex_header_hash,
                 uint32_t hex_header_hash_len,
                 uint8_t edgeBits,
                 uint8_t proofSize,
-                std::set<uint32_t>& cycle,
+                Cycles& cycles,
                 size_t threads_number,
                 ctpl::thread_pool&);
     }
