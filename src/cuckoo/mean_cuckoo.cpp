@@ -29,11 +29,11 @@
  * this exception statement from all source files in the program, then
  * also delete it here.
  */
-#include "mean_cuckoo.h"
+#include "merit/cuckoo/mean_cuckoo.h"
 
-#include "crypto/siphash.h"
-#include "crypto/siphashxN.h"
-#include "blake2/blake2.h"
+#include "merit/crypto/siphash.h"
+#include "merit/crypto/siphashxN.h"
+#include "merit/blake2/blake2.h"
 #include <sstream>
 #include <bitset>
 #include <condition_variable>

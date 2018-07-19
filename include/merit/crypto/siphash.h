@@ -3,7 +3,7 @@
 
 #include <stdint.h>    // for types uint32_t,uint64_t
 #include <immintrin.h> // for _mm256_* intrinsics
-#include "util/util.hpp"
+#include "merit/util/util.hpp"
 
 namespace merit
 {

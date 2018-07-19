@@ -3,7 +3,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 cmake_minimum_required(VERSION 2.8.11)
-project(libmeritminer LANGUAGES C CXX CUDA)
+project(libmeritminer LANGUAGES C CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
@@ -23,23 +23,27 @@ add_library(boost_thread STATIC IMPORTED)
 set_target_properties(boost_thread PROPERTIES IMPORTED_LOCATION ${Boost_THREAD_LIBRARY_RELEASE})
 
 include_directories(include)
-include_directories(src/)
-include_directories(src/crypto)
-include_directories(src/cuckoo)
-include_directories(src/blake2)
-include_directories(src/stratum)
-include_directories(src/miner)
-include_directories(src/util)
-include_directories(src/PicoSHA2)
+
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fPIC> $<$<COMPILE_LANGUAGE:C>:-fPIC>)
 
 find_package(CUDA)
 if(CUDA_FOUND)
+    enable_language(CUDA)
     add_definitions(-DCUDA_ENABLED)
+    set(CMAKE_CUDA_FLAGS "-Xcompiler \"-fPIC\"")
+
 
     link_directories(${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
     include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
     add_library(cuda STATIC IMPORTED)
     set_target_properties(cuda PROPERTIES IMPORTED_LOCATION ${CUDA_cudart_static_LIBRARY})
+    set(COMBINE_LIBS 
+        $<TARGET_FILE:meritminer>
+        $<TARGET_FILE:boost_system>
+        $<TARGET_FILE:boost_program_options>
+        $<TARGET_FILE:boost_thread>
+        $<TARGET_FILE:cuda>)
+    set(FAT_OBJS *.cu.o *.o)
 
     add_library(meritminer STATIC
         src/public.cpp
@@ -51,6 +55,13 @@ if(CUDA_FOUND)
         src/miner/miner.cpp
         src/util/util.cpp)
 else()
+    set(COMBINE_LIBS 
+        $<TARGET_FILE:meritminer>
+        $<TARGET_FILE:boost_system>
+        $<TARGET_FILE:boost_program_options>
+        $<TARGET_FILE:boost_thread>)
+
+    set(FAT_OBJS *.o)
     add_library(meritminer STATIC 
         src/public.cpp
         src/cuckoo/mean_cuckoo.cpp
@@ -64,7 +75,7 @@ if(CMAKE_HOST_WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
     set(FAT_LIB ${CMAKE_BINARY_DIR}/libfatmeritminer.lib)
     add_custom_target(combined
-        COMMAND lib.exe /OUT:${FAT_LIB} $<TARGET_FILE:meritminer> $<TARGET_FILE:boost_system> $<TARGET_FILE:boost_program_options> $<TARGET_FILE:boost_thread> $<TARGET_FILE:cuda>
+        COMMAND lib.exe /OUT:${FAT_LIB} ${COMBINE_LIBS}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             DEPENDS meritminer boost_system boost_program_options boost_thread)
     add_library(fatmeritminer STATIC IMPORTED GLOBAL)
@@ -73,14 +84,10 @@ if(CMAKE_HOST_WIN32)
 else()
     set(FAT_LIB ${CMAKE_BINARY_DIR}/libfatmeritminer.a)
     add_custom_target(combined
-            COMMAND ar -x $<TARGET_FILE:meritminer>
-            COMMAND ar -x $<TARGET_FILE:boost_system>
-            COMMAND ar -x $<TARGET_FILE:boost_program_options>
-            COMMAND ar -x $<TARGET_FILE:boost_thread>
-            COMMAND ar -x $<TARGET_FILE:cuda>
-            COMMAND ar -qcs ${FAT_LIB} *.cu.o *.o
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            DEPENDS meritminer boost_system boost_program_options boost_thread)
+        COMMAND for f in ${COMBINE_LIBS}\; do ar -x \$\$f\; done 
+        COMMAND ar -qcs ${FAT_LIB} ${FAT_OBJS}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        DEPENDS meritminer boost_system boost_program_options boost_thread)
     add_library(fatmeritminer STATIC IMPORTED GLOBAL)
     add_dependencies(fatmeritminer combined)
     set_target_properties(fatmeritminer PROPERTIES IMPORTED_LOCATION ${FAT_LIB})
@@ -94,13 +101,29 @@ else()
 	target_link_libraries(merit-minerd fatmeritminer pthread rt dl)
 endif()
 
-set_target_properties(meritminer PROPERTIES PUBLIC_HEADER "include/merit/miner.hpp")
-
 install(TARGETS merit-minerd meritminer
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
-            PUBLIC_HEADER DESTINATION include/merit
             ARCHIVE DESTINATION lib)
 install(FILES ${FAT_LIB} DESTINATION lib)
+
+file(GLOB H_PUB include/merit/*.hpp)
+file(GLOB H_BLAKE include/merit/blake/*.h)
+file(GLOB H_CRYPTO include/merit/crypto/*.h)
+file(GLOB H_CTPL include/merit/ctpl/*.h)
+file(GLOB H_CUCKOO include/merit/cuckoo/*.h)
+file(GLOB H_MINER include/merit/miner/*.hpp) 
+file(GLOB H_PICO include/merit/PicoSHA2/*.h)
+file(GLOB H_STRATUM include/merit/stratum/*.hpp)
+file(GLOB H_UTIL include/merit/util/*.hpp)
+install(FILES ${H_PUB} DESTINATION include/merit)
+install(FILES ${H_BLAKE} DESTINATION include/merit/blake)
+install(FILES ${H_CRYPTO} DESTINATION include/merit/crypto)
+install(FILES ${H_CTPL} DESTINATION include/merit/ctpl)
+install(FILES ${H_CUCKOO} DESTINATION include/merit/cuckoo)
+install(FILES ${H_MINER} DESTINATION include/merit/miner)
+install(FILES ${H_PICO} DESTINATION include/merit/PicoSHA2)
+install(FILES ${H_STRATUM} DESTINATION include/merit/stratum)
+install(FILES ${H_UTIL} DESTINATION include/merit/util)
 include(CPack)
 

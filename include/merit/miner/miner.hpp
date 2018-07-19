@@ -39,13 +39,13 @@
 #include <thread>
 #include <chrono>
 #include <deque>
-#include "util/util.hpp"
-#include "stratum/stratum.hpp"
+#include "merit/util/util.hpp"
+#include "merit/stratum/stratum.hpp"
+#include "merit/miner.hpp"
+#include "merit/ctpl/ctpl.h"
 
 #include <boost/optional.hpp>
-#include <merit/miner.hpp>
 
-#include "ctpl/ctpl.h"
 
 namespace merit
 {

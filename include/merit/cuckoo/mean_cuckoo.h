@@ -31,7 +31,7 @@
 #ifndef MERIT_CUCKOO_MEAN_CUCKOO_H
 #define MERIT_CUCKOO_MEAN_CUCKOO_H
 
-#include "ctpl/ctpl.h"
+#include "merit/ctpl/ctpl.h"
 
 #include <set>
 #include <vector>

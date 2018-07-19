@@ -31,7 +31,7 @@
 #ifndef MERIT_MINER_WORK_H
 #define MERIT_MINER_WORK_H
 
-#include "util/util.hpp"
+#include "merit/util/util.hpp"
 
 #include <string>
 #include <array>
