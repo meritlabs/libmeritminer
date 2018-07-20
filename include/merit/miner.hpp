@@ -35,6 +35,9 @@ namespace merit
         std::string title;
         long long int total_memory;
         unsigned int temperature;
+        unsigned int gpu_util;
+        unsigned int memory_util;
+        int fan_speed;
     };
 
     bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);
