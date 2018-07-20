@@ -98,7 +98,7 @@ add_executable(merit-minerd src/minerd.cpp)
 if(CMAKE_HOST_WIN32)
 	target_link_libraries(merit-minerd fatmeritminer)
 else()
-	target_link_libraries(merit-minerd fatmeritminer pthread rt dl)
+	target_link_libraries(merit-minerd fatmeritminer pthread rt dl nvidia-ml)
 endif()
 
 install(TARGETS merit-minerd meritminer

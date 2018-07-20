@@ -34,6 +34,7 @@ namespace merit
         size_t id;
         std::string title;
         long long int total_memory;
+        unsigned int temperature;
     };
 
     bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);

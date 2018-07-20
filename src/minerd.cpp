@@ -79,7 +79,8 @@ int main(int argc, char** argv)
         for(const auto &item: info){
             std::cout << "Device number: " << item.id << std::endl;
             std::cout << "Total memory: " << item.total_memory << std::endl;
-            std::cout << "Title: " << item.title << std::endl << std::endl;
+            std::cout << "Title: " << item.title << std::endl;
+            std::cout << "Temperature: " << item.temperature << std::endl << std::endl;
         }
 
         return 1;

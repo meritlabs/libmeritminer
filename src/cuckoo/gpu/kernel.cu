@@ -36,6 +36,7 @@
 #include "device_launch_parameters.h"
 #include "device_functions.h"
 #include "exceptions.h"
+#include <nvml.h>
 #include <xmmintrin.h>
 #include <algorithm>
 #include <stdio.h>
@@ -1030,6 +1031,7 @@ namespace merit
         size_t id;
         std::string title;
         long long int total_memory;
+        unsigned int temperature;
     };
 }
 
@@ -1037,17 +1039,40 @@ std::vector<merit::GPUInfo> GPUsInfo()
 {
     std::vector<merit::GPUInfo> res{};
 
+    // First initialize NVML library
+    nvmlReturn_t result = nvmlInit();
+    if (NVML_SUCCESS != result)
+        printf("Failed to initialize NVML: %s\n", nvmlErrorString(result));
+
+    nvmlDevice_t device;
+    unsigned int temp;
+
     int devices = CudaDevices();
-    for (int i = 0; i < devices; i++) {
+    for (int index = 0; index < devices; index ++) {
         merit::GPUInfo item{};
         cudaDeviceProp prop;
-        cudaGetDeviceProperties(&prop, i);
-        item.id = i;
+        cudaGetDeviceProperties(&prop, index);
+        item.id = index ;
         item.title = prop.name;
         item.total_memory = prop.totalGlobalMem;
 
+        result = nvmlDeviceGetHandleByIndex(index, &device);
+        if (NVML_SUCCESS != result)
+            printf("Failed to get handle for device %i: %s\n", 0, nvmlErrorString(result));
+
+        result = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temp);
+        if (NVML_SUCCESS != result)
+            printf("Failed to get temperature of device %i: %s\n", 0, nvmlErrorString(result));
+
+        item.temperature = temp;
         res.push_back(item);
     }
+
+    // shutdown NVML
+    result = nvmlShutdown();
+    if (NVML_SUCCESS != result)
+        printf("Failed to shutdown NVML: %s\n", nvmlErrorString(result));
+
 
     return res;
 }
