@@ -307,8 +307,8 @@ namespace merit {
                         if ((nvmlh->nvml_pci_domain_id[j] == (uint32_t) props.pciDomainID) &&
                             (nvmlh->nvml_pci_bus_id[j] == (uint32_t) props.pciBusID) &&
                             (nvmlh->nvml_pci_device_id[j] == (uint32_t) props.pciDeviceID)) {
-                                printf("CUDA GPU %d matches NVML GPU %d by busId %u",
-                                       i, j, (uint32_t) props.pciBusID);
+//                                printf("CUDA GPU %d matches NVML GPU %d by busId %u",
+//                                       i, j, (uint32_t) props.pciBusID);
                             nvmlh->nvml_cuda_device_id[j] = i;
                             nvmlh->cuda_nvml_device_id[i] = j;
                         }
@@ -1713,9 +1713,9 @@ namespace merit {
                         ret = NvAPI_GPU_GetBusId(phys[i], &busId);
                         if (ret == NVAPI_OK && busId == device_bus_ids[g]) {
                             nvapi_dev_map[g] = i;
-                            if (opt_debug)
-                                printf("CUDA GPU %d matches NVAPI GPU %d by busId %u",
-                                    g, i, busId);
+//                            if (opt_debug)
+//                                printf("CUDA GPU %d matches NVAPI GPU %d by busId %u",
+//                                    g, i, busId);
                             break;
                         }
                     }
