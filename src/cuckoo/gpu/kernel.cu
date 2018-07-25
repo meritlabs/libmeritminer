@@ -1025,20 +1025,6 @@ size_t CudaGetFreeMemory(int device){
     return free;
 }
 
-//namespace merit
-//{
-//    struct GPUInfo
-//    {
-//        size_t id;
-//        std::string title;
-//        long long int total_memory;
-//        unsigned int temperature;
-//        unsigned int gpu_util;
-//        unsigned int memory_util;
-//        int fan_speed;
-//    };
-//}
-
 namespace nvml = merit::nvml;
 
 nvml::nvml_handle * initNVML(){
