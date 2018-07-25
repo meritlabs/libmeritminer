@@ -34,9 +34,9 @@ namespace merit
         size_t id;
         std::string title;
         long long int total_memory;
-        unsigned int temperature;
-        unsigned int gpu_util;
-        unsigned int memory_util;
+        int temperature;
+        int gpu_util;
+        int memory_util;
         int fan_speed;
     };
 

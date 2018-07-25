@@ -32,7 +32,6 @@ if(CUDA_FOUND)
     add_definitions(-DCUDA_ENABLED)
     set(CMAKE_CUDA_FLAGS "-Xcompiler \"-fPIC\"")
 
-
     link_directories(${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
     include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
     add_library(cuda STATIC IMPORTED)
@@ -53,7 +52,8 @@ if(CUDA_FOUND)
         src/blake2/blake2b-ref.c
         src/stratum/stratum.cpp
         src/miner/miner.cpp
-        src/util/util.cpp)
+        src/util/util.cpp
+        src/nvml/nvml.cpp)
 else()
     set(COMBINE_LIBS 
         $<TARGET_FILE:meritminer>
@@ -98,7 +98,7 @@ add_executable(merit-minerd src/minerd.cpp)
 if(CMAKE_HOST_WIN32)
 	target_link_libraries(merit-minerd fatmeritminer)
 else()
-	target_link_libraries(merit-minerd fatmeritminer pthread rt dl nvidia-ml)
+	target_link_libraries(merit-minerd fatmeritminer pthread rt dl)
 endif()
 
 install(TARGETS merit-minerd meritminer
@@ -116,6 +116,7 @@ file(GLOB H_MINER include/merit/miner/*.hpp)
 file(GLOB H_PICO include/merit/PicoSHA2/*.h)
 file(GLOB H_STRATUM include/merit/stratum/*.hpp)
 file(GLOB H_UTIL include/merit/util/*.hpp)
+file(GLOB H_NVML include/merit/nvml/*.h)
 install(FILES ${H_PUB} DESTINATION include/merit)
 install(FILES ${H_BLAKE} DESTINATION include/merit/blake)
 install(FILES ${H_CRYPTO} DESTINATION include/merit/crypto)
@@ -125,5 +126,6 @@ install(FILES ${H_MINER} DESTINATION include/merit/miner)
 install(FILES ${H_PICO} DESTINATION include/merit/PicoSHA2)
 install(FILES ${H_STRATUM} DESTINATION include/merit/stratum)
 install(FILES ${H_UTIL} DESTINATION include/merit/util)
+install(FILES ${H_NVML} DESTINATION include/merit/nvml)
 include(CPack)
 

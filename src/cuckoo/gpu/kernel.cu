@@ -36,7 +36,7 @@
 #include "device_launch_parameters.h"
 #include "device_functions.h"
 #include "exceptions.h"
-#include <nvml.h>
+#include "merit/nvml/nvml.h"
 #include <xmmintrin.h>
 #include <algorithm>
 #include <stdio.h>
@@ -53,6 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <merit/nvml/nvml.h>
 
 #ifdef _WIN32
 #  define WINDOWS_LEAN_AND_MEAN
@@ -1024,34 +1025,34 @@ size_t CudaGetFreeMemory(int device){
     return free;
 }
 
-namespace merit
-{
-    struct GPUInfo
-    {
-        size_t id;
-        std::string title;
-        long long int total_memory;
-        unsigned int temperature;
-        unsigned int gpu_util;
-        unsigned int memory_util;
-        int fan_speed;
-    };
+//namespace merit
+//{
+//    struct GPUInfo
+//    {
+//        size_t id;
+//        std::string title;
+//        long long int total_memory;
+//        unsigned int temperature;
+//        unsigned int gpu_util;
+//        unsigned int memory_util;
+//        int fan_speed;
+//    };
+//}
+
+namespace nvml = merit::nvml;
+
+nvml::nvml_handle * initNVML(){
+
+    auto nvml = nvml::nvml_create();
+
+    if (nvml == NULL)
+        printf("Failed to initialize NVML: %s\n");
+
+    return nvml;
 }
 
-nvmlReturn_t initNVML(){
-    nvmlReturn_t result = nvmlInit();
-    if (NVML_SUCCESS != result)
-        printf("Failed to initialize NVML: %s\n", nvmlErrorString(result));
-
-    return result;
-}
-
-void shutdownNVML(){
-    auto result = nvmlShutdown();
-    if (NVML_SUCCESS != result){
-        printf("Failed to shutdown NVML: %s\n", nvmlErrorString(result));
-        exit(1);
-    }
+int shutdownNVML(nvml::nvml_handle* nvml){
+    return nvml::nvml_destroy(nvml);
 }
 
 std::vector<merit::GPUInfo> GPUsInfo()
@@ -1059,9 +1060,9 @@ std::vector<merit::GPUInfo> GPUsInfo()
     std::vector<merit::GPUInfo> res{};
 
     // Initialize NVML library
-    nvmlReturn_t nvmlres = initNVML();
+    auto nvml = initNVML();
 
-    nvmlDevice_t device;
+    nvml::nvmlDevice_t device;
     int devices = CudaDevices();
 
     for (int index = 0; index < devices; index ++) {
@@ -1073,34 +1074,44 @@ std::vector<merit::GPUInfo> GPUsInfo()
         item.total_memory = prop.totalGlobalMem;
 
         // Get device
-        nvmlres = nvmlDeviceGetHandleByIndex(index, &device);
-        if (NVML_SUCCESS != nvmlres){
-            printf("Failed to get handle for device %i: %s\n", 0, nvmlErrorString(nvmlres));
-            shutdownNVML();
+        auto nvmlres = nvml->nvmlDeviceGetHandleByIndex(index, &device);
+//        nvmlres = nvmlDeviceGetHandleByIndex();
+        if (nvml::NVML_SUCCESS != nvmlres){
+            printf("Failed to get handle for device %i: %s\n", 0, nvml->nvmlErrorString(nvmlres));
+            shutdownNVML(nvml);
         }
 
         // Temperature
-        nvmlres = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &item.temperature);
-        if (NVML_SUCCESS != nvmlres){
-            printf("Failed to get temperature of device %i: %s\n", 0, nvmlErrorString(nvmlres));
-            shutdownNVML();
+        unsigned int temp;
+        nvmlres = nvml->nvmlDeviceGetTemperature(device, 0, &temp);
+        if (nvml::NVML_SUCCESS != nvmlres){
+            printf("Failed to get temperature of device %i: %s\n", 0, nvml->nvmlErrorString(nvmlres));
+//            shutdownNVML(nvml);
+
+            item.temperature = -1;
+        } else {
+            item.temperature = temp;
         }
 
         // GPU cores and memory utilization
-        nvmlUtilization_t gpuUtil;
-        nvmlres = nvmlDeviceGetUtilizationRates(device, &gpuUtil);
-        if (NVML_SUCCESS != nvmlres){
-            printf("Failed to get utilization of device %i: %s\n", 0, nvmlErrorString(nvmlres));
-            shutdownNVML();
+        nvml::nvmlUtilization_t gpuUtil;
+        nvmlres = nvml->nvmlDeviceGetUtilizationRates(device, &gpuUtil);
+        if (nvml::NVML_SUCCESS != nvmlres){
+            printf("Failed to get utilization of device %i: %s\n", 0, nvml->nvmlErrorString(nvmlres));
+//            shutdownNVML(nvml);
+
+            item.gpu_util = -1;
+            item.memory_util = -1;
+        } else {
+            item.gpu_util = gpuUtil.gpu;
+            item.memory_util = gpuUtil.memory;
         }
-        item.gpu_util = gpuUtil.gpu;
-        item.memory_util = gpuUtil.memory;
 
         // Fan speed
         unsigned int speed;
-        nvmlres = nvmlDeviceGetFanSpeed(device, &speed);
-        if (NVML_SUCCESS != nvmlres){
-            printf("Failed to get fan speed of device %i: %s\n", 0, nvmlErrorString(nvmlres));
+        nvmlres = nvml->nvmlDeviceGetFanSpeed(device, &speed);
+        if (nvml::NVML_SUCCESS != nvmlres){
+//            printf("Failed to get fan speed of device %i: %s\n", 0, nvmlErrorString(nvmlres));
             item.fan_speed = -1;
         } else {
             item.fan_speed = speed;
@@ -1110,7 +1121,7 @@ std::vector<merit::GPUInfo> GPUsInfo()
         res.push_back(item);
     }
 
-    shutdownNVML();
+    shutdownNVML(nvml);
 
     return res;
 }
