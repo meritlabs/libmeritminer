@@ -655,7 +655,7 @@ class CuckooHash {
 
         void set(node_t u, node_t v) {
             u64 niew = (u64)u << P::NODEBITS | v;
-            for (node_t ui = u >> P::IDXSHIFT; ; ui = (ui+1) & P::CUCKOO_MASK) {
+            for (node_t ui = u >> P::IDXSHIFT; ui < P::CUCKOO_SIZE ; ui = (ui+1) & P::CUCKOO_MASK) {
                 u64 old = cuckoo[ui];
                 if (old == 0 || (old >> P::NODEBITS) == (u & P::KEYMASK)) {
                     cuckoo[ui] = niew;
@@ -664,7 +664,7 @@ class CuckooHash {
             }
         }
         node_t operator[](node_t u) const {
-            for (node_t ui = u >> P::IDXSHIFT; ; ui = (ui+1) & P::CUCKOO_MASK) {
+            for (node_t ui = u >> P::IDXSHIFT; ui < P::CUCKOO_SIZE; ui = (ui+1) & P::CUCKOO_MASK) {
                 u64 cu = cuckoo[ui];
                 if (!cu)
                     return 0;
