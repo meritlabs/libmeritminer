@@ -8,7 +8,7 @@ project(libmeritminer LANGUAGES C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD 14)
 
 #setup boost
 set(Boost_USE_STATIC_LIBS ON)
