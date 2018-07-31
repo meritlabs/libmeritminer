@@ -1,6 +1,6 @@
 # libmeritminer
 
-Library that mines merit.
+Library that mines [Merit](https://merit.me)
 
 ## Goals
 
