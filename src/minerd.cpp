@@ -55,11 +55,15 @@ int main(int argc, char** argv)
     std::string url;
     std::vector<int> gpu_devices;
     std::string address;
+    bool solo_mining;
+    std::string path_to_meritd_folder;
     desc.add_options()
         ("help", "show the help message")
         ("infogpu", "show the info about GPU in your system")
         ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
         ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
+        ("solo", po::value<bool>(&solo_mining)->default_value(false), "Enable solo-mining or not?")
+        ("meritd", po::value<std::string>(&path_to_meritd_folder)->default_value("./"), "Path to the folder with meritd daemon")
         ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
         ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
 
@@ -99,39 +103,45 @@ int main(int argc, char** argv)
     cores = std::max(0, cores);
     auto utilization = determine_utilization(cores);
 
-    std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
-        merit::create_context(), &merit::delete_context};
+    if(solo_mining){
+        std::cout << "info: " << "Starting solo mining..." << std::endl;
+        std::cout << "info: " << "Path to meritd: " << path_to_meritd_folder << std::endl;
 
-    merit::set_agent(c.get(), "merit-minerd", "0.2");
+    } else {
+        std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
+                merit::create_context(), &merit::delete_context};
 
-    if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
-        std::cerr << "Error connecting" << std::endl;
-        return 1;
-    }
-    merit::run_stratum(c.get());
-    merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
+        merit::set_agent(c.get(), "merit-minerd", "0.2");
 
-    int prev_graphs = 0;
-    while(true) { 
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(5s);
-
-        auto stats = merit::get_miner_stats(c.get());
-        auto graphs = stats.total.attempts + stats.current.attempts;
-        auto cycles = stats.total.cycles + stats.current.cycles;
-        auto shares = stats.total.shares + stats.current.shares;
-        auto graphps = stats.total.attempts_per_second;
-        auto cyclesps = stats.total.cycles_per_second;
-        auto sharesps = stats.total.shares_per_second;
-        if(graphs > prev_graphs) {
-            std::cout << "graphs: " << graphs << " cycles: " << cycles << " shares: " << shares;
-            if(stats.total.attempts > 0) {
-                std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps << std::endl;
-            }
-            std::cout << std::endl;
+        if (!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
+            std::cerr << "Error connecting" << std::endl;
+            return 1;
         }
-        prev_graphs = graphs;
-    }
+        merit::run_stratum(c.get());
+        merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices);
 
+        int prev_graphs = 0;
+        while (true) {
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(5s);
+
+            auto stats = merit::get_miner_stats(c.get());
+            auto graphs = stats.total.attempts + stats.current.attempts;
+            auto cycles = stats.total.cycles + stats.current.cycles;
+            auto shares = stats.total.shares + stats.current.shares;
+            auto graphps = stats.total.attempts_per_second;
+            auto cyclesps = stats.total.cycles_per_second;
+            auto sharesps = stats.total.shares_per_second;
+            if (graphs > prev_graphs) {
+                std::cout << "graphs: " << graphs << " cycles: " << cycles << " shares: " << shares;
+                if (stats.total.attempts > 0) {
+                    std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps
+                              << std::endl;
+                }
+                std::cout << std::endl;
+            }
+            prev_graphs = graphs;
+        }
+    }
     return 0;
 }
