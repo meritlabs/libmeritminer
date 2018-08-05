@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 
 #include "cuda_runtime.h"
 
@@ -45,7 +46,7 @@ namespace merit {
         /*extern*/ int8_t device_pstate[MAX_GPUS];
         /*extern*/ int32_t device_led[MAX_GPUS];
         int32_t device_led_state[MAX_GPUS] = {0};
-        static __thread bool has_rgb_ok = false;
+        static bool has_rgb_ok = false;
 
         uint32_t clock_prev[MAX_GPUS] = {0};
         uint32_t clock_prev_mem[MAX_GPUS] = {0};
@@ -56,12 +57,10 @@ namespace merit {
  */
 #if defined(_MSC_VER) || defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
+#undef min
+#undef max
         static void *wrap_dlopen(const char *filename) {
-            HMODULE h = LoadLibrary(filename);
-            if (!h && opt_debug) {
-                printf("dlopen(%d): failed to load %s",
-                    GetLastError(), filename);
-            }
+            HMODULE h = LoadLibrary(filename);          
             return (void*)h;
         }
         static void *wrap_dlsym(void *h, const char *sym) {
