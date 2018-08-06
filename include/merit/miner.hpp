@@ -23,6 +23,12 @@ namespace merit
             const char* user,
             const char* pass);
 
+    bool connect_solo_stratum(
+            Context* c,
+            const char* url,
+            const char* user,
+            const char* pass);
+
     void disconnect_stratum(Context* c);
     bool is_stratum_connected(Context* c);
 
@@ -40,7 +46,7 @@ namespace merit
         int fan_speed;
     };
 
-    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices);
+    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices, bool solo_mining);
     void stop_miner(Context*);
     bool is_stratum_running(Context*);
     bool is_miner_running(Context*);

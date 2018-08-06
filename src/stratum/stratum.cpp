@@ -578,6 +578,11 @@ namespace merit
             return _job;
         }
 
+        MaybeJob Client::get_solo_job(const std::string& path_to_meritd)
+        {
+
+        }
+
         void Client::submit_work(const util::Work& w)
         {
             std::string xnonce2_hex;
