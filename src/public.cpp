@@ -107,15 +107,28 @@ namespace merit {
             const char *user,
             const char *pass)
     {
-        assert(c);
+        try {
+            assert(c);
 
-        std::cerr << "info: " << "connecting to: " << url << " with user = " << user  << " pass = " << pass << std::endl;
-        if (!c->stratum.connect(url, user, pass)) {
-            std::cerr << "error: " << "error connecting to stratum server: " << url << std::endl;
+            std::cerr << "info: " << "connecting to: " << url << " with user = " << user << " pass = " << pass
+                      << std::endl;
+            if (!c->stratum.connect(url, user, pass)) {
+                std::cerr << "error: " << "error connecting to stratum server: " << url << std::endl;
+                return false;
+            }
+
+//        c->submit_work_func = [c](const util::Work &w) {
+//            c->stratum.submit_work(w);
+//        };
+
+            std::cerr << "info: " << "connected to: " << url << std::endl;
+
+            return true;
+        } catch (std::exception &e) {
+            std::cerr << "error: " << "error connecting to stratum server: " << e.what() << std::endl;
+            c->stratum.disconnect();
             return false;
         }
-
-        return true;
     }
 
     void disconnect_stratum(Context *c) {
@@ -216,8 +229,11 @@ namespace merit {
 
                 while (c->miner->running())
                     try {
-//                        auto j = c->stratum.get_solo_job(path_to_meritd);
+                        auto j = c->stratum.get_solo_job();
 
+                        if(j) {
+                            break;
+                        }
 //                        std::cout << "After getting the job" << std::endl;
 //                        if (!j) {
 //                            if (!c->stratum.connected()) {

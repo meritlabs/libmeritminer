@@ -64,7 +64,7 @@ int main(int argc, char** argv)
              "The stratum pool url")
             ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
             ("solo", po::value<bool>(&solo_mining)->default_value(false), "Enable solo-mining or not?")
-            ("soloaddress", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:18332"),
+            ("solourl", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:18332"),
              "Solo mining stratum server url")
             ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(),
              "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
@@ -123,6 +123,8 @@ int main(int argc, char** argv)
             std::cerr << "Error connecting" << std::endl;
             return 1;
         }
+
+        merit::run_stratum(c.get());
     }
 
     merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices, solo_mining);

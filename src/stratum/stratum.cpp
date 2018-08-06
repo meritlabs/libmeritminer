@@ -194,11 +194,13 @@ namespace merit
             boost::asio::connect(_socket, endpoints, e);
 
             if(e) {
+                std::cout << "Error: " << e << std::endl;
                 disconnect();
                 return false;
             }
 
             if(!set_socket_opts(_socket)) {
+                std::cout << "Error while setting socket options" << std::endl;
                 return false;
             }
 
@@ -458,6 +460,7 @@ namespace merit
             _state = Authorizing;
             std::stringstream req;
             req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
+            std::cout << "=== Authorizing: " << req.str() << std::endl;
             if (!send(req.str()))
             {
                 std::cerr << "error: " << "error sending authorize request" << std::endl;
@@ -578,9 +581,26 @@ namespace merit
             return _job;
         }
 
-        MaybeJob Client::get_solo_job(const std::string& path_to_meritd)
+        MaybeJob Client::get_solo_job()
         {
+            std::stringstream req;
+            req << "POST / HTTP/1.1\n" <<
+                   "Content-Type: text/plain\n" <<
+                   "Authorization: Basic bWVyaXRycGM6TERwaWtWYkRpM2VYX042UHdQZy1OVVk3Q0RCSGtMOG11Z0pjX0JYNTdnVT0=\n" <<
+                   "Accept: */*\n" <<
+                   "Content-Length: " << 79 + _user.size() << "\n\n" <<
+                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{}, \""<< _user <<"\"], \"id\": \"9\"}";
 
+            std::cout << "=== req: " << req.str() << std::endl;
+
+            if(!send(req.str())) {
+                std::cerr << "error: " << "Error getting blocktemplate for mining: " << req.str() << std::endl;
+                disconnect();
+            } else {
+                std::cout << "info: " << "blocktemplate: " << req.str() << std::endl;
+            }
+
+            return _job;
         }
 
         void Client::submit_work(const util::Work& w)
