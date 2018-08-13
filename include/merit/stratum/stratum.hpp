@@ -94,7 +94,12 @@ namespace merit
                 bool running() const;
                 bool stopping() const;
 
+                void switch_pool();
+
                 void set_pools(const std::vector<std::string>& pools);
+                const std::vector<std::string>& get_pools();
+
+                const std::string& get_url();
 
                 MaybeJob get_job();
 
@@ -112,7 +117,6 @@ namespace merit
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);
-                void switch_pool();
 
             private:
                 enum ConnState {

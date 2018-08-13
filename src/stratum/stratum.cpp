@@ -185,13 +185,16 @@ namespace merit
             std::cerr << "info: " << "host: " << _host << std::endl;
             std::cerr << "info: " << "port: " << _port << std::endl;
 
-
             asio::ip::tcp::resolver resolver{_service};
             asio::ip::tcp::resolver::query query{_host, _port};
             auto endpoints = resolver.resolve(query);
 
             boost::system::error_code e;
-            boost::asio::connect(_socket, endpoints, e);
+            boost::asio::ip::tcp::resolver::iterator end;
+
+            if(boost::asio::connect(_socket, endpoints, e) == end){
+                return false;
+            }
 
             if(e) {
                 disconnect();
@@ -781,8 +784,19 @@ namespace merit
             return true;
         }
 
-        void Client::set_pools(const std::vector<std::string>& pools){
+        void Client::set_pools(const std::vector<std::string>& pools)
+        {
             reserve_pools = pools;
+        }
+
+        const std::vector<std::string>& Client::get_pools()
+        {
+            return reserve_pools;
+        }
+
+        const std::string& Client::get_url()
+        {
+            return _url;
         }
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)

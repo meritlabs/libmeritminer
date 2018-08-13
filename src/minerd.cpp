@@ -108,9 +108,9 @@ int main(int argc, char** argv)
     merit::set_reserve_pools(c.get(), reserve_pools_url);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
-        std::cerr << "Error connecting" << std::endl;
-        return 1;
+        while(!merit::reconnect_stratum(c.get(), url.c_str(), address.c_str(), "")){}
     }
+    
     merit::run_stratum(c.get());
     merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
 
