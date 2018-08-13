@@ -53,16 +53,18 @@ int main(int argc, char** argv)
 
     po::options_description desc("Allowed options");
     std::string url;
+    std::vector<std::string> reserve_pools_url;
     std::vector<int> gpu_devices;
     std::string address;
     desc.add_options()
         ("help", "show the help message")
         ("infogpu", "show the info about GPU in your system")
         ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
+        ("reserveurl", po::value<std::vector<std::string>>(&reserve_pools_url)->multitoken()
+                ->default_value(std::vector<std::string>{"stratum+tcp://parachute.merit.me:3333"}, "stratum+tcp://parachute.merit.me:3333"), "Reserved pools url")
         ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
         ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
         ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
-
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
