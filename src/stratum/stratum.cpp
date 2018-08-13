@@ -490,6 +490,14 @@ namespace merit
                 }
 
                 if(!connected) {
+
+                    if(tries > 10){
+                        switch_pool();
+                        std::cout << std::endl << std::endl << std::endl << "info: " << "changing pool url to= " << _url << " and trying to connect" << std::endl;
+
+                        tries = 0;
+                    }
+
                     //exponential backoff
                     int k = std::pow(2, tries) - 1;
                     std::uniform_int_distribution<int> dist{1, k};
@@ -503,6 +511,16 @@ namespace merit
             }
 
             return true;
+        }
+
+        void Client::switch_pool()
+        {
+            if(reserve_pools.empty())
+                return;
+
+            reserve_pools.push_back(_url);
+            _url = reserve_pools.front();
+            reserve_pools.erase(reserve_pools.begin());
         }
 
         bool Client::run()
@@ -761,6 +779,10 @@ namespace merit
             }
 
             return true;
+        }
+
+        void Client::set_pools(const std::vector<std::string>& pools){
+            reserve_pools = pools;
         }
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)

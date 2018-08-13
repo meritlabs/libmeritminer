@@ -94,6 +94,8 @@ namespace merit
                 bool running() const;
                 bool stopping() const;
 
+                void set_pools(const std::vector<std::string>& pools);
+
                 MaybeJob get_job();
 
                 void submit_work(const util::Work&);
@@ -110,6 +112,7 @@ namespace merit
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);
+                void switch_pool();
 
             private:
                 enum ConnState {
@@ -138,6 +141,7 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
+                std::vector<std::string> reserve_pools;
 
                 std::atomic<double> _next_diff;
                 mutable std::mutex _sock_mutex;

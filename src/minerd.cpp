@@ -105,6 +105,7 @@ int main(int argc, char** argv)
         merit::create_context(), &merit::delete_context};
 
     merit::set_agent(c.get(), "merit-minerd", "0.3");
+    merit::set_reserve_pools(c.get(), reserve_pools_url);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
         std::cerr << "Error connecting" << std::endl;
