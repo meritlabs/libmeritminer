@@ -145,7 +145,7 @@ namespace merit {
         ::SetupKernelBuffers();
     }
 
-    bool run_stratum(Context *c) {
+    bool run_stratum(Context *c, bool solo_mining) {
         assert(c);
         if (c->stratum.running()) {
             stop_stratum(c);
@@ -156,9 +156,9 @@ namespace merit {
             c->stratum_thread.join();
         }
 
-        c->stratum_thread = std::thread([c]() {
+        c->stratum_thread = std::thread([c, solo_mining]() {
             try {
-                c->stratum.run();
+                c->stratum.run(solo_mining);
             } catch (std::exception &e) {
                 std::cerr << "error: " << "error running stratum: " << e.what() << std::endl;
             }

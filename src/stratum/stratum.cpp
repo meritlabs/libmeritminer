@@ -508,7 +508,7 @@ namespace merit
             return true;
         }
 
-        bool Client::run()
+        bool Client::run(bool solo_mining)
         {
             _run_state = Running;
             while (_run_state == Running)
@@ -523,12 +523,26 @@ namespace merit
                     throw std::runtime_error("disconnected.");
                 }
 
+                // skip 5 lines of HTTP headers
+                // TODO: refactor this
+                if(solo_mining){
+                    recv(res); recv(res); recv(res); recv(res); recv(res);
+                }
+
                 pt::ptree val;
                 if(!parse_json(res, val)) {
                     _sockbuf.clear();
                     std::cerr << "error parsing stratum response: " << res << std::endl;
                     continue;
                 }
+
+                if(solo_mining){
+                    val.put("method", val.get("id"));
+                }
+
+                std::ostringstream oss;
+                pt::write_json(oss, val);
+                std::cout << "JSON: " << oss.str() << std::endl;
 
                 if(!handle_command(val, res)) {
                     continue;

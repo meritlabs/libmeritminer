@@ -88,7 +88,7 @@ namespace merit
                 void disconnect();
                 bool subscribe();
                 bool authorize();
-                bool run();
+                bool run(bool solo_mining);
                 void stop();
                 bool connected() const;
                 bool running() const;

@@ -33,7 +33,7 @@ namespace merit
     bool is_stratum_connected(Context* c);
 
     void init();
-    bool run_stratum(Context*);
+    bool run_stratum(Context*, bool solo_mining);
     void stop_stratum(Context*);
 
     struct GPUInfo {

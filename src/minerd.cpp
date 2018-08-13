@@ -92,7 +92,7 @@ int main(int argc, char** argv)
             std::cout << "Memory util: " << item.memory_util << std::endl;
             std::cout << "Fan speed: " << item.fan_speed << std::endl << std::endl;
         }
-
+    
         return 1;
     }
 
@@ -117,14 +117,14 @@ int main(int argc, char** argv)
             std::cerr << "Error connecting" << std::endl;
             return 1;
         }
-        merit::run_stratum(c.get());
+        merit::run_stratum(c.get(), solo_mining);
     } else {
         if (!merit::connect_solo_stratum(c.get(), solo_url.c_str(), address.c_str(), "")) {
             std::cerr << "Error connecting" << std::endl;
             return 1;
         }
 
-        merit::run_stratum(c.get());
+        merit::run_stratum(c.get(), solo_mining);
     }
 
     merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices, solo_mining);
