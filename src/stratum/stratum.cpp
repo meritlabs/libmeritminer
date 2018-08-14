@@ -496,7 +496,7 @@ namespace merit
 
                     if(tries > MAX_TRIES_TO_RECONNECT){
                         switch_pool();
-                        std::cout << std::endl << std::endl << std::endl << "info: " << "changing pool url to= " << _url << " and trying to connect" << std::endl;
+                        std::cout << std::endl << "info: " << "changing pool url to= " << _url << " and trying to connect" << std::endl << std::endl;
 
                         tries = 0;
                     }
