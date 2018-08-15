@@ -39,6 +39,7 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <deque>
 
 #if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
 #include <winsock2.h>
@@ -523,7 +524,7 @@ namespace merit
 
             reserve_pools.push_back(_url);
             _url = reserve_pools.front();
-            reserve_pools.erase(reserve_pools.begin());
+            reserve_pools.pop_front();
         }
 
         bool Client::run()
@@ -784,12 +785,12 @@ namespace merit
             return true;
         }
 
-        void Client::set_pools(const std::vector<std::string>& pools)
+        void Client::set_pools(const std::deque<std::string>& pools)
         {
             reserve_pools = pools;
         }
 
-        const std::vector<std::string>& Client::get_pools()
+        const std::deque<std::string>& Client::get_pools()
         {
             return reserve_pools;
         }

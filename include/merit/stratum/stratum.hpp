@@ -36,6 +36,7 @@
 #include <mutex>
 #include <array>
 #include <vector>
+#include <deque>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio.hpp>
@@ -96,8 +97,8 @@ namespace merit
 
                 void switch_pool();
 
-                void set_pools(const std::vector<std::string>& pools);
-                const std::vector<std::string>& get_pools();
+                void set_pools(const std::deque<std::string>& pools);
+                const std::deque<std::string>& get_pools();
 
                 const std::string& get_url();
 
@@ -145,7 +146,7 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
-                std::vector<std::string> reserve_pools;
+                std::deque<std::string> reserve_pools;
                 unsigned int MAX_TRIES_TO_RECONNECT = 10;
 
                 std::atomic<double> _next_diff;

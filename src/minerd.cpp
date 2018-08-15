@@ -37,6 +37,7 @@
 #include <vector>
 #include <thread>
 #include <utility>
+#include <deque>
 
 #include <boost/program_options.hpp>
 
@@ -53,7 +54,10 @@ int main(int argc, char** argv)
 
     po::options_description desc("Allowed options");
     std::string url;
-    std::vector<std::string> reserve_pools_url;
+    std::vector<std::string> reserve_pools_url; // additional variable for storing pools urls
+    // because boost does not handle deque properly even with custom input/output(<<, >>) operators
+
+    std::deque<std::string> reserve_pools_url_deq;
     std::vector<int> gpu_devices;
     std::string address;
     desc.add_options()
@@ -96,6 +100,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    for(const auto &item: reserve_pools_url)
+        reserve_pools_url_deq.push_back(item);
+
     int cores;
     cores = vm["cores"].as<int>();
     cores = std::max(0, cores);
@@ -105,7 +112,7 @@ int main(int argc, char** argv)
         merit::create_context(), &merit::delete_context};
 
     merit::set_agent(c.get(), "merit-minerd", "0.3");
-    merit::set_reserve_pools(c.get(), reserve_pools_url);
+    merit::set_reserve_pools(c.get(), reserve_pools_url_deq);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
         while(!merit::reconnect_stratum(c.get(), url.c_str(), address.c_str(), "")){}

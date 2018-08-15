@@ -71,7 +71,7 @@ namespace merit
         c->stratum.set_agent(software, version);
     }
 
-    void set_reserve_pools(Context* c, const std::vector<std::string>& pools)
+    void set_reserve_pools(Context* c, const std::deque<std::string>& pools)
     {
         assert(c);
         c->stratum.set_pools(pools);
