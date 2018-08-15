@@ -147,7 +147,7 @@ namespace merit
                 std::string _port;
                 util::bytes _sockbuf;
                 std::deque<std::string> reserve_pools;
-                unsigned int MAX_TRIES_TO_RECONNECT = 10;
+                unsigned int MAX_TRIES_TO_RECONNECT = 5;
 
                 std::atomic<double> _next_diff;
                 mutable std::mutex _sock_mutex;
