@@ -54,8 +54,7 @@ int main(int argc, char** argv)
 
     po::options_description desc("Allowed options");
     std::string url;
-    std::vector<std::string> reserve_pools_url; // additional variable for storing pools urls
-    // because boost does not handle deque properly even with custom input/output(<<, >>) operators
+    std::vector<std::string> all_pools_url;
 
     std::deque<std::string> reserve_pools_url_deq;
     std::vector<int> gpu_devices;
@@ -64,7 +63,7 @@ int main(int argc, char** argv)
         ("help,h", "show the help message")
         ("infogpu,i", "show the info about GPU in your system")
         ("url,u", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
-        ("reserveurl,r", po::value<std::vector<std::string>>(&reserve_pools_url)->multitoken()
+        ("reserveurl,r", po::value<std::vector<std::string>>(&all_pools_url)->multitoken()
                 ->default_value(std::vector<std::string>{"stratum+tcp://parachute.merit.me:3333"}, "stratum+tcp://parachute.merit.me:3333"), "Reserved pools url")
         ("address,a", po::value<std::string>(&address), "The address to send mining rewards to.")
         ("gpu,g", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
@@ -100,8 +99,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    for(const auto &item: reserve_pools_url)
-        reserve_pools_url_deq.push_back(item);
 
     int cores;
     cores = vm["cores"].as<int>();
@@ -111,8 +108,10 @@ int main(int argc, char** argv)
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
 
+    all_pools_url.insert(all_pools_url.begin(), url);
+
     merit::set_agent(c.get(), "merit-minerd", "0.3");
-    merit::set_reserve_pools(c.get(), reserve_pools_url_deq);
+    merit::set_reserve_pools(c.get(), all_pools_url);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
         while(!merit::reconnect_stratum(c.get(), url.c_str(), address.c_str(), "")){}

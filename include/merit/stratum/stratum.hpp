@@ -97,8 +97,8 @@ namespace merit
 
                 void switch_pool();
 
-                void set_pools(const std::deque<std::string>& pools);
-                const std::deque<std::string>& get_pools();
+                void set_pools(const std::vector<std::string>& pools);
+                const std::vector<std::string>& get_pools();
 
                 const std::string& get_url();
 
@@ -146,7 +146,8 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
-                std::deque<std::string> reserve_pools;
+                std::vector<std::string> pools;
+                unsigned int current_pool_id = 0;
                 unsigned int MAX_TRIES_TO_RECONNECT = 5;
 
                 std::atomic<double> _next_diff;

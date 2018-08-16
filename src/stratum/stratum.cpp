@@ -519,12 +519,8 @@ namespace merit
 
         void Client::switch_pool()
         {
-            if(reserve_pools.empty())
-                return;
-
-            reserve_pools.push_back(_url);
-            _url = reserve_pools.front();
-            reserve_pools.pop_front();
+            current_pool_id = (current_pool_id + 1) % pools.size();
+            _url = pools[current_pool_id];
         }
 
         bool Client::run()
@@ -785,14 +781,14 @@ namespace merit
             return true;
         }
 
-        void Client::set_pools(const std::deque<std::string>& pools)
+        void Client::set_pools(const std::vector<std::string>& pools)
         {
-            reserve_pools = pools;
+            this->pools = pools;
         }
 
-        const std::deque<std::string>& Client::get_pools()
+        const std::vector<std::string>& Client::get_pools()
         {
-            return reserve_pools;
+            return pools;
         }
 
         const std::string& Client::get_url()
