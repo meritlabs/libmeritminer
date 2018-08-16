@@ -519,6 +519,8 @@ namespace merit
 
         void Client::switch_pool()
         {
+            assert(!pools.empty());
+
             current_pool_id = (current_pool_id + 1) % pools.size();
             _url = pools[current_pool_id];
         }
@@ -783,6 +785,8 @@ namespace merit
 
         void Client::set_pools(const std::vector<std::string>& pools)
         {
+            assert(!pools.empty());
+
             this->pools = pools;
         }
 
