@@ -103,6 +103,7 @@ namespace merit
                 bool reconnect();
                 bool send(const std::string&);
                 bool recv(std::string&);
+                bool recv_with_headers(std::string&);
                 void cleanup();
                 bool subscribe_resp();
                 bool handle_command(const pt::ptree&, const std::string& res);

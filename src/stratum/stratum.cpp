@@ -514,19 +514,13 @@ namespace merit
             while (_run_state == Running)
             try {
                 std::string res;
-                if(!recv(res)) {
+                if((solo_mining && !recv_with_headers(res)) || (!solo_mining && !recv(res))) {
                     std::cerr << "error: " << "error receiving" << std::endl;
                     throw std::runtime_error("error receiving");
                 }
                 if(_run_state == Running && _state == Disconnected) {
                     std::cerr << "error: disconnected: " << std::endl;
                     throw std::runtime_error("disconnected.");
-                }
-
-                // skip 5 lines of HTTP headers
-                // TODO: refactor this
-                if(solo_mining){
-                    recv(res); recv(res); recv(res); recv(res); recv(res);
                 }
 
                 pt::ptree val;
@@ -537,7 +531,7 @@ namespace merit
                 }
 
                 if(solo_mining){
-                    val.put("method", val.get("id"));
+                    val.put("method", val.get<std::string>("id"));
                 }
 
                 std::ostringstream oss;
@@ -800,6 +794,14 @@ namespace merit
             }
 
             return true;
+        }
+
+        bool Client::recv_with_headers(std::string& res)
+        {
+            // Skip 4 lines with HTTP headers + blank line
+            recv(res); recv(res); recv(res); recv(res); recv(res);
+
+            return recv(res);
         }
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)
