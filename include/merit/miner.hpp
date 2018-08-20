@@ -46,7 +46,8 @@ namespace merit
         int fan_speed;
     };
 
-    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices, bool solo_mining);
+    bool run_miner(Context*, int workers, int threads_per_worker, const std::vector<int>& gpu_devices,
+                   bool solo_mining, const std::string& auth_token);
     void stop_miner(Context*);
     bool is_stratum_running(Context*);
     bool is_miner_running(Context*);

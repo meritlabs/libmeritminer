@@ -57,6 +57,7 @@ int main(int argc, char** argv)
     std::string address;
     bool solo_mining;
     std::string solo_url;
+    std::string auth_token;
     desc.add_options()
             ("help", "show the help message")
             ("infogpu", "show the info about GPU in your system")
@@ -64,6 +65,8 @@ int main(int argc, char** argv)
              "The stratum pool url")
             ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
             ("solo", po::value<bool>(&solo_mining)->default_value(false), "Enable solo-mining or not?")
+            ("token", po::value<std::string>(&auth_token)->default_value("bWVyaXRycGM6TERwaWtWYkRpM2VYX042UHdQZy1OVVk3Q0RCSGtMOG11Z0pjX0JYNTdnVT0="),
+             "RPC token for solo-mining")
             ("solourl", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:18332"),
              "Solo mining stratum server url")
             ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(),
@@ -127,7 +130,7 @@ int main(int argc, char** argv)
         merit::run_stratum(c.get(), solo_mining);
     }
 
-    merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices, solo_mining);
+    merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices, solo_mining, auth_token);
 
     int prev_graphs = 0;
     while (true) {

@@ -176,7 +176,8 @@ namespace merit {
     }
 
     bool run_miner(Context *c, int workers, int threads_per_worker,
-                   const std::vector<int> &gpu_devices, bool solo_mining)
+                   const std::vector<int> &gpu_devices, bool solo_mining,
+                   const std::string& auth_token)
     try {
         assert(c);
         using namespace std::chrono_literals;
@@ -229,11 +230,11 @@ namespace merit {
 
                 while (c->miner->running())
                     try {
-                        auto j = c->stratum.get_solo_job();
+                        auto j = c->stratum.get_solo_job(auth_token);
 
-                        if(j) {
+                        if(j)
                             break;
-                        }
+
 //                        std::cout << "After getting the job" << std::endl;
 //                        if (!j) {
 //                            if (!c->stratum.connected()) {

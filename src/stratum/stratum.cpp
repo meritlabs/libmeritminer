@@ -589,12 +589,12 @@ namespace merit
             return _job;
         }
 
-        MaybeJob Client::get_solo_job()
+        MaybeJob Client::get_solo_job(const std::string& auth_token)
         {
             std::stringstream req;
             req << "POST / HTTP/1.1\n" <<
                    "Content-Type: text/plain\n" <<
-                   "Authorization: Basic bWVyaXRycGM6TERwaWtWYkRpM2VYX042UHdQZy1OVVk3Q0RCSGtMOG11Z0pjX0JYNTdnVT0=\n" <<
+                   "Authorization: Basic "<< auth_token << "\n" <<
                    "Accept: */*\n" <<
                    "Content-Length: " << 79 + _user.size() << "\n\n" <<
                    "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{}, \""<< _user <<"\"], \"id\": \"9\"}";

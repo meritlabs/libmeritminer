@@ -95,7 +95,7 @@ namespace merit
                 bool stopping() const;
 
                 MaybeJob get_job();
-                MaybeJob get_solo_job();
+                MaybeJob get_solo_job(const std::string& auth_token);
 
                 void submit_work(const util::Work&);
 
