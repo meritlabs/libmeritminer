@@ -605,7 +605,7 @@ namespace merit
                 std::cerr << "error: " << "Error getting blocktemplate for mining: " << req.str() << std::endl;
                 disconnect();
             } else {
-                std::cout << "info: " << "blocktemplate: " << req.str() << std::endl;
+                std::cout << "info: " << "getting blocktemplate for " << _user << std::endl;
             }
 
             return _job;
