@@ -561,7 +561,6 @@ __global__   void /*Magical*/FluffyTail/*Pony*/(
     }
 }
 
-std::vector<bool> device_set;
 std::vector<u64> buffer_h;
 std::vector<int*> buffer_a;
 std::vector<int*> buffer_b;
@@ -868,7 +867,6 @@ int SetupKernelBuffers() {
     assert(indexes_e2.empty());
     assert(recovery.empty());
 
-    device_set.resize(count, false);
     buffer_h.resize(count * BUFFER_H_SIZE);
     buffer_a.resize(count, nullptr);
     buffer_b.resize(count, nullptr);
@@ -900,18 +898,13 @@ struct Run
         size_t free_device_mem = 0;
         size_t total_device_mem = 0;
 
-        cudaError_t status;
         std::ostringstream err_msg;
 
-        if(!device_set[device]) {
-            status = cudaSetDevice(device);
-
-            if (status != cudaSuccess) {
-                err_msg << "An error occurred while trying to set the CUDA device: ";
-                err_msg << cudaGetErrorString(status);
-                throw CudaSetDeviceException(err_msg.str());
-            }
-            device_set[device] = true;
+        cudaError_t status = cudaSetDevice(device);
+        if (status != cudaSuccess) {
+            err_msg << "An error occurred while trying to set the CUDA device: ";
+            err_msg << cudaGetErrorString(status);
+            throw CudaSetDeviceException(err_msg.str());
         }
 
         if(buffer_a[device] == nullptr) {
