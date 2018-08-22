@@ -1351,10 +1351,12 @@ namespace merit
                 if (found) {
                     for(int i = 0; i < ctx.sols.size() / proofSize; i++) {
                         Cycle cycle;
-                        copy(ctx.sols.begin()+ (i * proofSize), ctx.sols.begin() + proofSize, inserter(cycle, cycle.begin()));
+                        copy(
+                                ctx.sols.begin() + (i * proofSize),
+                                ctx.sols.begin() + (i * proofSize) + proofSize,
+                                inserter(cycle, cycle.begin()));
                         cycles.emplace_back(cycle);
                     }
-
                 }
 
                 return found;

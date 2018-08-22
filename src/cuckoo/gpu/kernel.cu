@@ -107,7 +107,7 @@ struct Params {
     const static u16 TLBLOCKS = 4096;
     const static u16 TLTPB = 1024;
     const static u16 RBLOCKS = 512;
-    const static u16 RTPB = 512;
+    const static u16 RTPB = 256;
 };
 
 struct SipKeys
