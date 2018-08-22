@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
 
-    merit::set_agent(c.get(), "merit-minerd", "0.3");
+    merit::set_agent(c.get(), "merit-minerd", "0.4");
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
         std::cerr << "Error connecting" << std::endl;
