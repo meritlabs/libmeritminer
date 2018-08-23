@@ -109,6 +109,7 @@ namespace merit
                 bool handle_command(const pt::ptree&, const std::string& res);
                 bool mining_notify(const pt::ptree& params);
                 bool mining_difficulty(const pt::ptree& params);
+                bool mining_set_solo_job(const pt::ptree& params);
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);

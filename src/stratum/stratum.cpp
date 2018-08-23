@@ -39,6 +39,7 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <vector>
 
 #if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
 #include <winsock2.h>
@@ -272,6 +273,7 @@ namespace merit
 
             auto job_id = v->second.get_value_optional<std::string>(); v++;
             if(!job_id) { return false; }
+            std::cout << "job_id: " << typeid(job_id).name() << std::endl;
 
             auto prevhash = v->second.get_value_optional<std::string>(); v++;
             if(!prevhash) { return false; }
@@ -360,6 +362,98 @@ namespace merit
             return true;
         }
 
+        bool Client::mining_set_solo_job(const pt::ptree& params)
+        {
+//            auto v = params.begin();
+
+//            auto job_id = params.get_optional();
+            auto job_id = "a"; // TODO: fix this
+//            if(!job_id) { return false; }
+
+            auto prevhash = params.get<std::string>("result.previousblockhash");
+//            if(!prevhash) { return false; }
+
+            std::string coinbase1 = "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708";
+//            auto coinbase1 = params.get<std::string>();
+//            if(!coinbase1) { return false; }
+
+            std::string coinbase2 = "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000";
+//            auto coinbase2 = params.get<std::string>();
+//            if(!coinbase2) { return false; }
+
+            auto merkle_array = std::vector<int>{};
+
+            std::string version = "12311111";
+//            auto version = params.get<std::string>("result.version");
+//            if(!version) { return false; }
+
+            auto nbits = params.get<std::string>("result.bits");
+//            if(!nbits) { return false; }
+
+            auto edgebits = params.get<int>("result.edgebits");
+//            auto edgebits = params.get_value_optional<int>("result.edgebits");
+//            if(!edgebits) { return false; }
+
+            std::string time = "12312312";
+//            auto time = params.get<std::string>("result.curtime");
+//            if(!time) { return false; }
+
+            auto is_clean = true;
+//            if(!is_clean) { return false; }
+
+
+            if(prevhash.size() != 64) { return false; }
+            if(version.size() != 8) { return false; }
+            if(nbits.size() != 8) { return false; }
+            std::cout << "== HERE ==" << std::endl;
+            if(time.size() != 8) { return false; }
+
+
+
+            std::lock_guard<std::mutex> guard{_job_mutex};
+            Job j;
+
+            if(!util::parse_hex(prevhash, j.prevhash)) { return false;}
+            if(!util::parse_hex(version, j.version)) { return false;}
+            if(!util::parse_hex(nbits, j.nbits)) { return false;}
+            if(!util::parse_hex(time, j.time)) { return false;}
+
+            j.nedgebits = edgebits;
+
+            j.coinbase1_size = coinbase1.size()/2;
+
+            if(!util::parse_hex(coinbase1, j.coinbase)) { return false; }
+            j.coinbase.insert(j.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
+
+            j.xnonce2_start = j.coinbase.size();
+            j.xnonce2_size = _xnonce2_size;
+
+            j.coinbase.insert(j.coinbase.end(), _xnonce2_size, 0);
+            if(!util::parse_hex(coinbase2, j.coinbase)) { return false; }
+
+            j.id = *job_id;
+
+//            for(const auto& hex : merkle_array) {
+//                std::string s = hex.second.get_value<std::string>();
+//                util::ubytes bin;
+//                if(!util::parse_hex(s, bin)) {
+//                    return false;
+//                }
+//
+//                j.merkle.push_back(bin);
+//            }
+
+            j.diff = _next_diff;
+            j.clean = is_clean;
+            _new_job = true;
+            std::cerr << "info: " << "new solo job: " << j.id << " time: " << time << " nbits: " << nbits << " edgebits: " << j.nedgebits << " prevhash: " << prevhash << std::endl;
+
+            _job = j;
+
+            return true;
+
+        }
+
         bool Client::client_reconnect(const pt::ptree& params)
         {
             auto v = params.begin();
@@ -412,6 +506,15 @@ namespace merit
             auto id = val.get_child_optional("id");
             auto method = val.get_optional<std::string>("method");
             if(!method) {
+                return true;
+            }
+
+            if(*method == "mining.get_solo_job"){
+                if(!mining_set_solo_job(val)){
+                    std::cerr << "error: " << "unable to set mining.set_solo_job" << std::endl;
+                    return false;
+                }
+
                 return true;
             }
 
@@ -596,8 +699,8 @@ namespace merit
                    "Content-Type: text/plain\n" <<
                    "Authorization: Basic "<< auth_token << "\n" <<
                    "Accept: */*\n" <<
-                   "Content-Length: " << 79 + _user.size() << "\n\n" <<
-                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{}, \""<< _user <<"\"], \"id\": \"9\"}";
+                   "Content-Length: " << 97 + _user.size() << "\n\n" <<
+                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{}, \""<< _user <<"\"], \"id\": \"mining.get_solo_job\"}";
 
             std::cout << "=== req: " << req.str() << std::endl;
 
@@ -680,6 +783,8 @@ namespace merit
                 return false;
             }
 
+            std::cout << "=== Another response(subscribe_resp): " << resp_line << std::endl;
+
             pt::ptree resp;
             if(!parse_json(resp_line, resp)) {
                 std::cerr << "error: " << "error parsing response: " << resp_line << std::endl;
@@ -744,6 +849,7 @@ namespace merit
         {
             auto message_with_nl = message + "\n";
             std::lock_guard<std::mutex> guard{_sock_mutex};
+            std::cout << "=== message to send: " << message_with_nl << std::endl;
             boost::system::error_code error;
             asio::write(_socket, boost::asio::buffer(message_with_nl), error);
             return !error;
@@ -785,6 +891,8 @@ namespace merit
             auto size = std::distance(_sockbuf.begin(), nl);
             message.resize(size);
             std::copy(_sockbuf.begin(), nl, message.begin());
+
+            std::cout << "=== receive message: " << message << " ===" << std::endl;
 
             if (_sockbuf.size() > size + 1) {
                 std::copy(_sockbuf.begin() + size + 1, _sockbuf.end(), _sockbuf.begin());

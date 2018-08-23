@@ -220,7 +220,7 @@ namespace merit {
         if (solo_mining) {
             std::cout << "info: " << "Starting solo mining..." << std::endl;
 
-            c->collab_thread = std::thread([c]() {
+            c->collab_thread = std::thread([c, auth_token]() {
                 while (c->miner->state() != miner::Miner::Running) {}
 
                 std::cout << "Miner is Running and ready to start getting job and then mine it" << std::endl;
@@ -232,19 +232,17 @@ namespace merit {
                     try {
                         auto j = c->stratum.get_solo_job(auth_token);
 
-                        if(j)
-                            break;
+                        if (!j) {
+                            std::cout << "== NO JOB! ==" << std::endl;
+                            c->miner->clear_job();
+                            std::this_thread::sleep_for(50ms);
+                            continue;
+                        }
 
-//                        std::cout << "After getting the job" << std::endl;
-//                        if (!j) {
-//                            if (!c->stratum.connected()) {
-//                                c->miner->clear_job();
-//                            }
-//                            std::this_thread::sleep_for(50ms);
-//                            continue;
-//                        }
-//
-//                        c->miner->submit_job(*j);
+
+                        std::cout << "After getting the job" << std::endl;
+
+                        c->miner->submit_job(*j);
 
                         // get block
 
