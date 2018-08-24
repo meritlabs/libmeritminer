@@ -97,6 +97,8 @@ namespace merit
                 MaybeJob get_job();
                 MaybeJob get_solo_job(const std::string& auth_token);
 
+                unsigned int get_solo_job_id();
+
                 void submit_work(const util::Work&);
 
             private:
@@ -110,6 +112,7 @@ namespace merit
                 bool mining_notify(const pt::ptree& params);
                 bool mining_difficulty(const pt::ptree& params);
                 bool mining_set_solo_job(const pt::ptree& params);
+                pt::ptree convert_blocktemplate(const pt::ptree& params);
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);
@@ -141,6 +144,8 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
+
+                unsigned int static _solo_job_id;
 
                 std::atomic<double> _next_diff;
                 mutable std::mutex _sock_mutex;

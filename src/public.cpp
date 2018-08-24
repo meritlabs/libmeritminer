@@ -232,17 +232,21 @@ namespace merit {
                     try {
                         auto j = c->stratum.get_solo_job(auth_token);
 
-                        if (!j) {
-                            std::cout << "== NO JOB! ==" << std::endl;
-                            c->miner->clear_job();
-                            std::this_thread::sleep_for(50ms);
-                            continue;
+                        if(j){
+                            std::this_thread::sleep_for(5s);
+                            break;
                         }
+//                        if (!j) {
+//                            std::cout << "== NO JOB! ==" << std::endl;
+//                            c->miner->clear_job();
+//                            std::this_thread::sleep_for(50ms);
+//                            continue;
+//                        }
 
 
                         std::cout << "After getting the job" << std::endl;
 
-                        c->miner->submit_job(*j);
+//                        c->miner->submit_job(*j);
 
                         // get block
 

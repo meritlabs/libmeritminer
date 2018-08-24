@@ -78,6 +78,8 @@ namespace merit
         {
         }
 
+        unsigned int Client::_solo_job_id = 0;
+
         Client::~Client()
         {
             disconnect();
@@ -364,51 +366,23 @@ namespace merit
 
         bool Client::mining_set_solo_job(const pt::ptree& params)
         {
-//            auto v = params.begin();
+            auto res = convert_blocktemplate(params);
 
-//            auto job_id = params.get_optional();
-            auto job_id = "a"; // TODO: fix this
-//            if(!job_id) { return false; }
-
-            auto prevhash = params.get<std::string>("result.previousblockhash");
-//            if(!prevhash) { return false; }
-
-            std::string coinbase1 = "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708";
-//            auto coinbase1 = params.get<std::string>();
-//            if(!coinbase1) { return false; }
-
-            std::string coinbase2 = "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000";
-//            auto coinbase2 = params.get<std::string>();
-//            if(!coinbase2) { return false; }
-
+            auto job_id = res.get<int>("id");
+            auto prevhash = res.get<std::string>("prevhash");
+            auto coinbase1 = res.get<std::string>("coinbase1");
+            auto coinbase2 = res.get<std::string>("coinbase2");
             auto merkle_array = std::vector<int>{};
-
-            std::string version = "12311111";
-//            auto version = params.get<std::string>("result.version");
-//            if(!version) { return false; }
-
-            auto nbits = params.get<std::string>("result.bits");
-//            if(!nbits) { return false; }
-
-            auto edgebits = params.get<int>("result.edgebits");
-//            auto edgebits = params.get_value_optional<int>("result.edgebits");
-//            if(!edgebits) { return false; }
-
-            std::string time = "12312312";
-//            auto time = params.get<std::string>("result.curtime");
-//            if(!time) { return false; }
-
-            auto is_clean = true;
-//            if(!is_clean) { return false; }
-
+            auto version = res.get<std::string>("version");
+            auto nbits = res.get<std::string>("bits");
+            auto edgebits = res.get<int>("edgebits");
+            auto time = res.get<std::string>("time");
+            auto is_clean = res.get<bool>("is_clean");
 
             if(prevhash.size() != 64) { return false; }
-            if(version.size() != 8) { return false; }
+            if(version.size() != 8) { return false; } // problem
             if(nbits.size() != 8) { return false; }
-            std::cout << "== HERE ==" << std::endl;
-            if(time.size() != 8) { return false; }
-
-
+            if(time.size() != 8) { return false; } // problem
 
             std::lock_guard<std::mutex> guard{_job_mutex};
             Job j;
@@ -431,7 +405,7 @@ namespace merit
             j.coinbase.insert(j.coinbase.end(), _xnonce2_size, 0);
             if(!util::parse_hex(coinbase2, j.coinbase)) { return false; }
 
-            j.id = *job_id;
+            j.id = job_id;
 
 //            for(const auto& hex : merkle_array) {
 //                std::string s = hex.second.get_value<std::string>();
@@ -452,6 +426,48 @@ namespace merit
 
             return true;
 
+        }
+
+        pt::ptree Client::convert_blocktemplate(const pt::ptree& params)
+        {
+            pt::ptree res{};
+            std::string tmp;
+            std::stringstream stream;
+
+            res.add("id", get_solo_job_id());
+
+            std::string prevhash;
+            util::to_hex(params.get<std::string>("result.previousblockhash"), prevhash);
+            res.add("prevhash", prevhash);
+
+            // TODO: fix this
+            res.add("coinbase1", "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708");
+            res.add("coinbase2", "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000");
+
+
+            // TODO: looks like it's wrong
+            uint32_t version = static_cast<uint32_t>(atoi(params.get<std::string>("result.version").c_str())); // get, convert to BigEndian, then to HexString
+            stream << std::hex << version;
+            res.add("version", version);
+            stream.clear();
+
+            res.add("bits", params.get<std::string>("result.bits"));
+
+            res.add("edgebits", params.get<std::string>("result.edgebits"));
+
+            uint32_t time = static_cast<uint32_t>(atoi(params.get<std::string>("result.curtime").c_str()));
+            stream << std::hex << time;
+            res.add("time", std::string(stream.str()));
+            stream.clear();
+
+            res.add("is_clean", true);
+
+            std::cout << "=== CONVERTING BLOCKTEMPLATE ===" << std::endl;
+            std::ostringstream oss;
+            pt::write_json(oss, res);
+            std::cout << oss.str() << std::endl;
+
+            return res;
         }
 
         bool Client::client_reconnect(const pt::ptree& params)
@@ -911,6 +927,14 @@ namespace merit
 
             return recv(res);
         }
+
+        unsigned int Client::get_solo_job_id()
+        {
+            // return and increment(so all ids will be different)
+            return _solo_job_id++;
+        }
+
+
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)
         {
