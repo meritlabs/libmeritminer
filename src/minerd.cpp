@@ -97,7 +97,7 @@ int main(int argc, char** argv)
     // Validate input GPU device indexes
     auto info = merit::gpus_info();
     for(const auto& device: gpu_devices){
-        if(device >= info.size()){
+        if(device >= info.size() || device < 0){
             std::cerr << "There is no GPU device with index = " << device << ". Please check available GPU devices by using --infogpu argument." << std::endl;
             return 1;
         }
