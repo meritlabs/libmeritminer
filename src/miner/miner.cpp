@@ -32,6 +32,7 @@
 #include "merit/cuckoo/mean_cuckoo.h"
 #include "merit/crypto/siphash.h"
 #include "merit/blake2/blake2.h"
+#include "merit/termcolor/termcolor.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -178,9 +179,9 @@ namespace merit
             assert(threads_per_worker >= 0);
 
             _state = NotRunning;
-            std::cerr << "info: " << "workers: " << workers << std::endl;
-            std::cerr << "info: " << "threads per worker: " << threads_per_worker << std::endl;
-            std::cerr << "info: " << "gpu devices: " << gpu_devices.size() << std::endl;
+            std::cout << "info :: workers: " << termcolor::cyan << workers << termcolor::reset << std::endl;
+            std::cout << "info :: threads per worker: " << termcolor::cyan << threads_per_worker << termcolor::reset << std::endl;
+            std::cout << "info :: gpu devices: " << termcolor::cyan << gpu_devices.size() << termcolor::reset << std::endl;
 
             for(int i = 0; i < workers; i++) {
                 _workers.emplace_back(i, threads_per_worker, false, _pool, *this);
@@ -248,7 +249,7 @@ namespace merit
 
         void Miner::run()
         {
-            std::cerr << "info: " << "starting workers..." << std::endl;
+            std::cout << "info :: " << "starting workers..." << std::endl;
             using namespace std::chrono_literals;
             if(_state != NotRunning) {
                 return;
@@ -263,7 +264,7 @@ namespace merit
                                 try {
                                     worker.run(); 
                                 } catch( std::exception& e) {
-                                    std::cerr << "mining worker " << id << " error: " << e.what() << std::endl;
+                                    std::cout << "mining worker " << id << " error: " << e.what() << std::endl;
                                 }
                             }));
             }
@@ -271,12 +272,12 @@ namespace merit
             for(auto& j: jobs) { j.get();}
             _state = NotRunning;
 
-            std::cerr << "info: " << "stopped workers." << std::endl;
+            std::cout << "info :: " << "stopped workers." << std::endl;
         }
 
         void Miner::stop()
         {
-            std::cerr << "info: " << "stopping workers..." << std::endl;
+            std::cout << "info :: " << "stopping workers..." << std::endl;
             _state = Stopping;
         }
 
@@ -375,7 +376,7 @@ namespace merit
 
         void Worker::run()
         {
-            std::cerr << "info: " << "started worker: " << _id << std::endl;
+            std::cout << "info :: " << "started worker: " << _id << std::endl;
             using namespace std::chrono_literals;
             util::Work prev_work;
             uint32_t n =  0xffffffffU / _miner.total_workers() * _id;
@@ -489,7 +490,7 @@ namespace merit
 
                         std::string cycle_hash_hex;
                         util::to_hex(cycle_hash, cycle_hash_hex);
-                        std::cerr << "info: " << "(" << _id << ") found cycle (" << idx << "): " << cycle_hash_hex << std::endl;
+                        std::cout << "info :: " << termcolor::green << "(" << _id << ") found cycle (" << idx << "): " << cycle_hash_hex << termcolor::reset << std::endl;
                         if(target_test(cycle_hash, work->target)) {
                             stat.shares++;
                             _miner.submit_work(*work);
@@ -499,7 +500,7 @@ namespace merit
                 }
             }
             _state = NotRunning;
-            std::cerr << "info: " << "worker " << _id << " stopped..." << std::endl;
+            std::cout << "info :: " << "worker " << _id << " stopped..." << std::endl;
         }
     }
 }

@@ -29,6 +29,7 @@
  * also delete it here.
  */
 #include <merit/miner.hpp>
+#include "merit/termcolor/termcolor.hpp"
 
 #include <iostream>
 #include <string>
@@ -90,7 +91,7 @@ int main(int argc, char** argv)
     }
 
     if(address.empty()) {
-        std::cout << "forgot to set your reward address. use --address" << std::endl;
+        std::cerr << "forgot to set your reward address. use --address" << std::endl;
         return 1;
     }
 
@@ -105,7 +106,7 @@ int main(int argc, char** argv)
     merit::set_agent(c.get(), "merit-minerd", "0.4");
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
-        std::cerr << "Error connecting" << std::endl;
+        std::cerr << termcolor::red << "Error connecting" << termcolor::reset << std::endl;
         return 1;
     }
     merit::run_stratum(c.get());
@@ -124,11 +125,16 @@ int main(int argc, char** argv)
         auto cyclesps = stats.total.cycles_per_second;
         auto sharesps = stats.total.shares_per_second;
         if(graphs > prev_graphs) {
-            std::cout << "graphs: " << graphs << " cycles: " << cycles << " shares: " << shares;
+            std::cout << "info :: graphs: " << termcolor::cyan << graphs << termcolor::reset
+                      << " cycles: " << termcolor::cyan << cycles << termcolor::reset
+                      << " shares: " << termcolor::cyan << shares << termcolor::reset;
             if(stats.total.attempts > 0) {
-                std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps << std::endl;
+                std::cout << " graphs/s: " << termcolor::cyan << graphps << termcolor::reset
+                          << " cycles/s: " << termcolor::cyan << cyclesps << termcolor::reset
+                          << " shares/s: " << termcolor::cyan << sharesps << termcolor::reset << std::endl;
+            } else {
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
         }
         prev_graphs = graphs;
     }

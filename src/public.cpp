@@ -31,6 +31,7 @@
 #include "merit/miner.hpp"
 #include "merit/stratum/stratum.hpp"
 #include "merit/miner/miner.hpp"
+#include "merit/termcolor/termcolor.hpp"
 
 #include <iostream>
 #include <memory>
@@ -80,21 +81,21 @@ namespace merit
     {
         assert(c);
 
-        std::cerr << "info: " << "connecting to: " << url<< std::endl; 
+        std::cout << "info :: " << "connecting to: " << url << termcolor::reset << std::endl; 
         if(!c->stratum.connect(url, user, pass)) {
-            std::cerr << "error: " << "error connecting to stratum server: " << url<< std::endl; 
+            std::cerr << termcolor::red << "error: " << "error connecting to stratum server: " << url << termcolor::reset << std::endl; 
             return false;
         }
 
-        std::cerr << "info: " << "subscribing to: " << url<< std::endl; 
+        std::cout << "info :: " << "subscribing to: " << url<< std::endl; 
         if(!c->stratum.subscribe()) {
-            std::cerr << "error: " << "error subscribing to stratum server: " << url<< std::endl; 
+            std::cerr << termcolor::red << "error: " << "error subscribing to stratum server: " << url << termcolor::reset << std::endl; 
             return false;
         }
 
-        std::cerr << "info: " << "authorizing as: " << user<< std::endl; 
+        std::cout << "info :: " << "authorizing as: " << user<< std::endl; 
         if(!c->stratum.authorize()) {
-            std::cerr << "error: " << "error authorize to stratum server: " << url<< std::endl; 
+            std::cerr << termcolor::red << "error: " << "error authorize to stratum server: " << url << termcolor::reset << std::endl; 
             return false;
         }
 
@@ -102,12 +103,12 @@ namespace merit
             c->stratum.submit_work(w);
         };
 
-        std::cerr << "info: " << "connected to: " << url<< std::endl; 
+        std::cout << "info :: " << termcolor::green << "connected to: " << url << termcolor::reset << std::endl; 
         return true;
     }
     catch(std::exception& e)
     {
-        std::cerr << "error: " << "error connecting to stratum server: " << e.what()<< std::endl; 
+        std::cerr << termcolor::red << "error: " << "error connecting to stratum server: " << e.what() << termcolor::reset << std::endl; 
         c->stratum.disconnect();
         return false;
     }
@@ -145,10 +146,10 @@ namespace merit
                 try {
                     c->stratum.run();
                 } catch(std::exception& e) {
-                std::cerr << "error: " << "error running stratum: " << e.what()<< std::endl; 
+                std::cerr << termcolor::red << "error: " << "error running stratum: " << e.what() << termcolor::reset << std::endl; 
                 }
                 c->stratum.disconnect();
-                std::cerr << "info: " << "stopped stratum."<< std::endl; 
+                std::cout << "info :: " << "stopped stratum."<< std::endl; 
         });
 
         return true;
@@ -157,7 +158,7 @@ namespace merit
     void stop_stratum(Context* c)
     {
         assert(c);
-        std::cerr << "info: " << "stopping stratum..."<< std::endl; 
+        std::cout << "info :: " << "stopping stratum..."<< std::endl; 
         c->stratum.stop();
     }
 
@@ -174,14 +175,14 @@ namespace merit
 
         c->miner.reset();
 
-        std::cerr << "info: " << "setting up miner..."<< std::endl; 
+        std::cout << "info :: " << "setting up miner..."<< std::endl; 
         c->miner = std::make_unique<miner::Miner>(
                 workers,
                 threads_per_worker,
                 gpu_devices,
                 c->submit_work_func);
 
-        std::cerr << "info: " << "starting miner..."<< std::endl; 
+        std::cout << "info :: " << "starting miner..."<< std::endl; 
         if(c->mining_thread.joinable()) {
             c->mining_thread.join();
         }
@@ -190,14 +191,14 @@ namespace merit
                     c->miner->run();
                 } catch(std::exception& e) {
                     c->miner->stop();
-                    std::cerr << "error: " << e.what() << std::endl;
+                    std::cerr << termcolor::red << "error: " << e.what() << termcolor::reset << std::endl;
 
                     return false;
                 }
         });
 
         //TODO: different logic depending on stratum vs solo
-        std::cerr << "info: " << "starting collab thread..."<< std::endl; 
+        std::cout << "info :: " << "starting collab thread..."<< std::endl; 
         if(c->collab_thread.joinable()) {
             c->collab_thread.join();
         }
@@ -217,7 +218,7 @@ namespace merit
                     c->miner->submit_job(*j);
 
                 } catch(std::exception& e) {
-                std::cerr << "error: " << "error getting job: " << e.what()<< std::endl; 
+                std::cerr << termcolor::red << "error: " << "error getting job: " << e.what() << termcolor::reset << std::endl; 
                     std::this_thread::sleep_for(50ms);
                 }
         });
@@ -225,7 +226,7 @@ namespace merit
     }
     catch(std::exception& e)
     {
-        std::cerr << "error: " << "error starting miners: " << e.what()<< std::endl; 
+        std::cerr << termcolor::red  << "error: " << "error starting miners: " << e.what() << termcolor::reset << std::endl; 
         return false;
     }
 
