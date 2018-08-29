@@ -53,7 +53,9 @@ if(CUDA_FOUND)
         src/stratum/stratum.cpp
         src/miner/miner.cpp
         src/util/util.cpp
-        src/nvml/nvml.cpp)
+        src/nvml/nvml.cpp
+        src/merkle/merkle.cpp)
+
 else()
     set(COMBINE_LIBS 
         $<TARGET_FILE:meritminer>
@@ -68,7 +70,8 @@ else()
         src/blake2/blake2b-ref.c
         src/stratum/stratum.cpp
         src/miner/miner.cpp
-        src/util/util.cpp)
+        src/util/util.cpp
+        src/merkle/merkle.cpp)
 endif()
 
 if(CMAKE_HOST_WIN32)
@@ -117,6 +120,7 @@ file(GLOB H_PICO include/merit/PicoSHA2/*.h)
 file(GLOB H_STRATUM include/merit/stratum/*.hpp)
 file(GLOB H_UTIL include/merit/util/*.hpp)
 file(GLOB H_NVML include/merit/nvml/*.h)
+file(GLOB H_MERKLE include/merit/merkle/*.h)
 install(FILES ${H_PUB} DESTINATION include/merit)
 install(FILES ${H_BLAKE} DESTINATION include/merit/blake)
 install(FILES ${H_CRYPTO} DESTINATION include/merit/crypto)
@@ -127,5 +131,6 @@ install(FILES ${H_PICO} DESTINATION include/merit/PicoSHA2)
 install(FILES ${H_STRATUM} DESTINATION include/merit/stratum)
 install(FILES ${H_UTIL} DESTINATION include/merit/util)
 install(FILES ${H_NVML} DESTINATION include/merit/nvml)
+install(FILES ${H_MERKLE} DESTINATION include/merit/merkle)
 include(CPack)
 
