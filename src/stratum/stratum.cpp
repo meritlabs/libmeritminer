@@ -40,6 +40,7 @@
 #include <sstream>
 #include <iterator>
 #include <vector>
+#include <bitset>
 
 #if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
 #include <winsock2.h>
@@ -436,6 +437,7 @@ namespace merit
 
             res.add("id", get_solo_job_id());
 
+            // TODO: probably we do not need hex it here
             std::string prevhash;
             util::to_hex(params.get<std::string>("result.previousblockhash"), prevhash);
             res.add("prevhash", prevhash);
@@ -445,20 +447,25 @@ namespace merit
             res.add("coinbase2", "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000");
 
 
-            // TODO: looks like it's wrong
-            uint32_t version = static_cast<uint32_t>(atoi(params.get<std::string>("result.version").c_str())); // get, convert to BigEndian, then to HexString
-            stream << std::hex << version;
-            res.add("version", version);
-            stream.clear();
+            auto block_version = boost::lexical_cast<int32_t>(params.get<std::string>("result.version")); // get version parameter
+
+            // divide into bytes and take hex of each of them
+            // e.g. 671088640 -> 2800000000
+            std::bitset<32> version_bits(block_version);
+            stream << std::hex << version_bits.to_ulong();
+
+            res.add("version", stream.str());
+            stream.clear(); stream.str("");
 
             res.add("bits", params.get<std::string>("result.bits"));
 
             res.add("edgebits", params.get<std::string>("result.edgebits"));
 
             uint32_t time = static_cast<uint32_t>(atoi(params.get<std::string>("result.curtime").c_str()));
-            stream << std::hex << time;
-            res.add("time", std::string(stream.str()));
-            stream.clear();
+            std::bitset<32> time_bits(time);
+            stream << std::hex << time_bits.to_ulong();
+            res.add("time", stream.str());
+            stream.clear(); stream.str("");
 
             res.add("is_clean", true);
 
@@ -715,8 +722,8 @@ namespace merit
                    "Content-Type: text/plain\n" <<
                    "Authorization: Basic "<< auth_token << "\n" <<
                    "Accept: */*\n" <<
-                   "Content-Length: " << 97 + _user.size() << "\n\n" <<
-                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{}, \""<< _user <<"\"], \"id\": \"mining.get_solo_job\"}";
+                   "Content-Length: " << 157 + _user.size() << "\n\n" <<
+                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{\"capabilities\": [\"coinbasetxn\", \"workid\", \"coinbase/append\"]}, \""<< _user <<"\"], \"id\": \"mining.get_solo_job\"}";
 
             std::cout << "=== req: " << req.str() << std::endl;
 
