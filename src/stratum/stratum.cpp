@@ -39,6 +39,7 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <deque>
 
 #if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
 #include <winsock2.h>
@@ -185,13 +186,16 @@ namespace merit
             std::cerr << "info: " << "host: " << _host << std::endl;
             std::cerr << "info: " << "port: " << _port << std::endl;
 
-
             asio::ip::tcp::resolver resolver{_service};
             asio::ip::tcp::resolver::query query{_host, _port};
             auto endpoints = resolver.resolve(query);
 
             boost::system::error_code e;
-            boost::asio::connect(_socket, endpoints, e);
+            boost::asio::ip::tcp::resolver::iterator end;
+
+            if(boost::asio::connect(_socket, endpoints, e) == end){
+                return false;
+            }
 
             if(e) {
                 disconnect();
@@ -490,6 +494,14 @@ namespace merit
                 }
 
                 if(!connected) {
+
+                    if(tries > MAX_TRIES_TO_RECONNECT){
+                        switch_pool();
+                        std::cout << std::endl << "info: " << "changing pool url to= " << _url << " and trying to connect" << std::endl << std::endl;
+
+                        tries = 0;
+                    }
+
                     //exponential backoff
                     int k = std::pow(2, tries) - 1;
                     std::uniform_int_distribution<int> dist{1, k};
@@ -503,6 +515,14 @@ namespace merit
             }
 
             return true;
+        }
+
+        void Client::switch_pool()
+        {
+            assert(!pools.empty());
+
+            current_pool_id = (current_pool_id + 1) % pools.size();
+            _url = pools[current_pool_id];
         }
 
         bool Client::run()
@@ -761,6 +781,23 @@ namespace merit
             }
 
             return true;
+        }
+
+        void Client::set_pools(const std::vector<std::string>& pools)
+        {
+            assert(!pools.empty());
+
+            this->pools = pools;
+        }
+
+        const std::vector<std::string>& Client::get_pools()
+        {
+            return pools;
+        }
+
+        const std::string& Client::get_url()
+        {
+            return _url;
         }
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)

@@ -71,6 +71,12 @@ namespace merit
         c->stratum.set_agent(software, version);
     }
 
+    void set_reserve_pools(Context* c, const std::vector<std::string>& pools)
+    {
+        assert(c);
+        c->stratum.set_pools(pools);
+    }
+
     bool connect_stratum(
             Context* c,
             const char* url,
@@ -110,6 +116,20 @@ namespace merit
         std::cerr << "error: " << "error connecting to stratum server: " << e.what()<< std::endl; 
         c->stratum.disconnect();
         return false;
+    }
+
+    bool reconnect_stratum(
+            Context* c,
+            const char* url,
+            const char* user,
+            const char* pass)
+    {
+        c->stratum.switch_pool();
+
+        std::cerr << std::endl << "error: " << "failed to connect to the pool= " << url << std::endl;
+        std::cout << "info: " << "reconnecting to another pool= " << c->stratum.get_url() << std::endl << std::endl;
+
+        return connect_stratum(c, c->stratum.get_url().c_str(), user, pass);
     }
 
     void disconnect_stratum(Context* c)

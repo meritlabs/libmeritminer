@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 
 namespace merit
 {
@@ -22,6 +23,14 @@ namespace merit
             const char* url,
             const char* user,
             const char* pass);
+
+    bool reconnect_stratum(
+            Context* c,
+            const char* url,
+            const char* user,
+            const char* pass);
+
+    void set_reserve_pools(Context* c, const std::vector<std::string>& pools);
 
     void disconnect_stratum(Context* c);
     bool is_stratum_connected(Context* c);

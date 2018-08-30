@@ -36,6 +36,7 @@
 #include <mutex>
 #include <array>
 #include <vector>
+#include <deque>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio.hpp>
@@ -94,6 +95,13 @@ namespace merit
                 bool running() const;
                 bool stopping() const;
 
+                void switch_pool();
+
+                void set_pools(const std::vector<std::string>& pools);
+                const std::vector<std::string>& get_pools();
+
+                const std::string& get_url();
+
                 MaybeJob get_job();
 
                 void submit_work(const util::Work&);
@@ -138,6 +146,9 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
+                std::vector<std::string> pools;
+                unsigned int current_pool_id = 0;
+                unsigned int MAX_TRIES_TO_RECONNECT = 5;
 
                 std::atomic<double> _next_diff;
                 mutable std::mutex _sock_mutex;
