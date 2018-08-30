@@ -39,6 +39,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio.hpp>
+#include <boost/foreach.hpp>
 #include <thread>
 #include <atomic>
 

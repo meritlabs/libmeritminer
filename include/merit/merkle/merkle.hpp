@@ -33,10 +33,15 @@
 #define MERIT_MERKLE_H
 
 #include <cctype>
+#include <list>
 #include <vector>
 #include <cstdio>
 #include <string>
 #include <memory>
+#include <string.h>
+
+#include "merit/PicoSHA2/picosha2.h"
+#include "merit/util/util.hpp"
 
 namespace merit {
 
@@ -123,6 +128,21 @@ namespace merit {
 
             const MerkleNode *right() const { return right_.get(); }
         };
+
+        char* double_hash(const std::string& str);
+
+        class DoubleSHA256StringMerkleNode : public MerkleNode<std::string, double_hash, picosha2::k_digest_size> {
+        public:
+            DoubleSHA256StringMerkleNode(const std::string &value): MerkleNode(value) {}
+            DoubleSHA256StringMerkleNode(const DoubleSHA256StringMerkleNode *left, const DoubleSHA256StringMerkleNode *right): MerkleNode(left, right) {}
+        protected:
+            const char *computeHash() const override;
+        };
+
+        template<typename NodeType> const NodeType* build_(NodeType *nodes[], size_t len);
+        template<typename T, typename NodeType> const NodeType* build(const std::list<T> &values);
+        template<typename T, typename NodeType> const NodeType* build(const std::vector<T> &values);
+
     }
 }
 
