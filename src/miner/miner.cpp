@@ -38,10 +38,10 @@
 #include <set>
 
 
-#ifdef CUDA_ENABLED
-
 using Cycle = std::set<uint32_t>;
 using Cycles = std::vector<Cycle>;
+
+#ifdef CUDA_ENABLED
 
 bool FindCyclesOnCudaDevice(
         uint64_t sip_k0, uint64_t sip_k1,
