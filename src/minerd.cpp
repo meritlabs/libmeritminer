@@ -55,18 +55,28 @@ int main(int argc, char** argv)
     std::string url;
     std::vector<int> gpu_devices;
     std::string address;
+    bool solo_mining;
+    std::string solo_url;
+    std::string auth_token;
     desc.add_options()
-        ("help", "show the help message")
-        ("infogpu", "show the info about GPU in your system")
-        ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
-        ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
-        ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
-        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
+            ("help", "show the help message")
+            ("infogpu", "show the info about GPU in your system")
+            ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"),
+             "The stratum pool url")
+            ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
+            ("solo", po::value<bool>(&solo_mining)->default_value(false), "Enable solo-mining or not?")
+            ("token", po::value<std::string>(&auth_token)->default_value("bWVyaXRycGM6TERwaWtWYkRpM2VYX042UHdQZy1OVVk3Q0RCSGtMOG11Z0pjX0JYNTdnVT0="),
+             "RPC token for solo-mining. You can set it in the merit.conf")
+            ("solourl", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:18332"),
+             "Solo mining stratum server url")
+            ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(),
+             "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
+            ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
 
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);    
+    po::notify(vm);
 
     if (vm.count("help")) {
         std::cout << desc << std::endl;;
@@ -76,7 +86,7 @@ int main(int argc, char** argv)
     if (vm.count("infogpu")) {
         auto info = merit::gpus_info();
         std::cout << "GPU info:" << std::endl;
-        for(const auto &item: info){
+        for (const auto &item: info) {
             std::cout << "Device number: " << item.id << std::endl;
             std::cout << "Total memory: " << item.total_memory << std::endl;
             std::cout << "Title: " << item.title << std::endl;
@@ -85,11 +95,11 @@ int main(int argc, char** argv)
             std::cout << "Memory util: " << item.memory_util << std::endl;
             std::cout << "Fan speed: " << item.fan_speed << std::endl << std::endl;
         }
-
+    
         return 1;
     }
 
-    if(address.empty()) {
+    if (address.empty()) {
         std::cout << "forgot to set your reward address. use --address" << std::endl;
         return 1;
     }
@@ -100,19 +110,30 @@ int main(int argc, char** argv)
     auto utilization = determine_utilization(cores);
 
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
-        merit::create_context(), &merit::delete_context};
+            merit::create_context(), &merit::delete_context};
 
     merit::set_agent(c.get(), "merit-minerd", "0.4");
 
-    if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
-        std::cerr << "Error connecting" << std::endl;
-        return 1;
+
+    if(!solo_mining){
+        if (!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
+            std::cerr << "Error connecting" << std::endl;
+            return 1;
+        }
+        merit::run_stratum(c.get(), solo_mining);
+    } else {
+        if (!merit::connect_solo_stratum(c.get(), solo_url.c_str(), address.c_str(), "")) {
+            std::cerr << "Error connecting" << std::endl;
+            return 1;
+        }
+
+        merit::run_stratum(c.get(), solo_mining);
     }
-    merit::run_stratum(c.get());
-    merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
+
+    merit::run_miner(c.get(), utilization.first, utilization.second, gpu_devices, solo_mining, auth_token);
 
     int prev_graphs = 0;
-    while(true) { 
+    while (true) {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(5s);
 
@@ -123,15 +144,15 @@ int main(int argc, char** argv)
         auto graphps = stats.total.attempts_per_second;
         auto cyclesps = stats.total.cycles_per_second;
         auto sharesps = stats.total.shares_per_second;
-        if(graphs > prev_graphs) {
+        if (graphs > prev_graphs) {
             std::cout << "graphs: " << graphs << " cycles: " << cycles << " shares: " << shares;
-            if(stats.total.attempts > 0) {
-                std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps << std::endl;
+            if (stats.total.attempts > 0) {
+                std::cout << " graphs/s: " << graphps << " cycles/s: " << cyclesps << " shares/s: " << sharesps
+                          << std::endl;
             }
             std::cout << std::endl;
         }
         prev_graphs = graphs;
     }
-
     return 0;
 }

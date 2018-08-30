@@ -39,6 +39,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio.hpp>
+#include <boost/foreach.hpp>
 #include <thread>
 #include <atomic>
 
@@ -88,13 +89,16 @@ namespace merit
                 void disconnect();
                 bool subscribe();
                 bool authorize();
-                bool run();
+                bool run(bool solo_mining);
                 void stop();
                 bool connected() const;
                 bool running() const;
                 bool stopping() const;
 
                 MaybeJob get_job();
+                MaybeJob get_solo_job(const std::string& auth_token);
+
+                unsigned int get_solo_job_id();
 
                 void submit_work(const util::Work&);
 
@@ -102,11 +106,14 @@ namespace merit
                 bool reconnect();
                 bool send(const std::string&);
                 bool recv(std::string&);
+                bool recv_with_headers(std::string&);
                 void cleanup();
                 bool subscribe_resp();
                 bool handle_command(const pt::ptree&, const std::string& res);
                 bool mining_notify(const pt::ptree& params);
                 bool mining_difficulty(const pt::ptree& params);
+                bool mining_set_solo_job(const pt::ptree& params);
+                pt::ptree convert_blocktemplate(const pt::ptree& params);
                 bool client_reconnect(const pt::ptree& params);
                 bool client_get_version(const pt::ptree& params);
                 bool client_show_message(const pt::ptree& params, const pt::ptree& id);
@@ -138,6 +145,8 @@ namespace merit
                 std::string _host;
                 std::string _port;
                 util::bytes _sockbuf;
+
+                unsigned int static _solo_job_id;
 
                 std::atomic<double> _next_diff;
                 mutable std::mutex _sock_mutex;

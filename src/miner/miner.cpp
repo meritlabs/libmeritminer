@@ -193,6 +193,8 @@ namespace merit
 
         void Miner::submit_job(const stratum::Job& j)
         {
+            std::cout << "submit_job" << std::endl;
+
             auto w = stratum::work_from_job(j);
             util::MaybeWork prev_work;
             {
@@ -384,9 +386,11 @@ namespace merit
             _state = Running;
             while(_miner.state() == Miner::Running)
             {
+                std::cout << "in miner cycle" << std::endl;
                 auto work = _miner.next_work();
 
                 if(!work) {
+                    std::cout << "There is no work!" << std::endl;
                     std::this_thread::sleep_for(10ms);
                     continue;
                 }
@@ -469,6 +473,8 @@ namespace merit
                 stat.attempts++;
 
                 if(found) {
+                    std::cout << "CYCLE FOUND" << std::endl;
+
                     stat.cycles+=cycles.size();
 
                     int idx = 0;

@@ -29,6 +29,7 @@
  * also delete it here.
  */
 #include "merit/stratum/stratum.hpp"
+#include "merit/merkle/merkle.hpp"
 
 #include <chrono>
 #include <boost/property_tree/ptree.hpp>
@@ -39,6 +40,8 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <vector>
+#include <bitset>
 
 #if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
 #include <winsock2.h>
@@ -76,6 +79,8 @@ namespace merit
             _mt{_rd()}
         {
         }
+
+        unsigned int Client::_solo_job_id = 0;
 
         Client::~Client()
         {
@@ -194,11 +199,13 @@ namespace merit
             boost::asio::connect(_socket, endpoints, e);
 
             if(e) {
+                std::cout << "Error: " << e << std::endl;
                 disconnect();
                 return false;
             }
 
             if(!set_socket_opts(_socket)) {
+                std::cout << "Error while setting socket options" << std::endl;
                 return false;
             }
 
@@ -270,6 +277,7 @@ namespace merit
 
             auto job_id = v->second.get_value_optional<std::string>(); v++;
             if(!job_id) { return false; }
+            std::cout << "job_id: " << typeid(job_id).name() << std::endl;
 
             auto prevhash = v->second.get_value_optional<std::string>(); v++;
             if(!prevhash) { return false; }
@@ -358,6 +366,130 @@ namespace merit
             return true;
         }
 
+        bool Client::mining_set_solo_job(const pt::ptree& params)
+        {
+            auto res = convert_blocktemplate(params);
+
+            auto job_id = res.get<int>("id");
+            auto prevhash = res.get<std::string>("prevhash");
+            auto coinbase1 = res.get<std::string>("coinbase1");
+            auto coinbase2 = res.get<std::string>("coinbase2");
+            auto merkle_array = std::vector<int>{};
+            auto version = res.get<std::string>("version");
+            auto nbits = res.get<std::string>("bits");
+            auto edgebits = res.get<int>("edgebits");
+            auto time = res.get<std::string>("time");
+            auto is_clean = res.get<bool>("is_clean");
+
+            if(prevhash.size() != 64) { return false; }
+            if(version.size() != 8) { return false; } // problem
+            if(nbits.size() != 8) { return false; }
+            if(time.size() != 8) { return false; } // problem
+
+            std::lock_guard<std::mutex> guard{_job_mutex};
+            Job j;
+
+            if(!util::parse_hex(prevhash, j.prevhash)) { return false;}
+            if(!util::parse_hex(version, j.version)) { return false;}
+            if(!util::parse_hex(nbits, j.nbits)) { return false;}
+            if(!util::parse_hex(time, j.time)) { return false;}
+
+            j.nedgebits = edgebits;
+
+            j.coinbase1_size = coinbase1.size()/2;
+
+            if(!util::parse_hex(coinbase1, j.coinbase)) { return false; }
+            j.coinbase.insert(j.coinbase.end(), _xnonce1.begin(), _xnonce1.end());
+
+            j.xnonce2_start = j.coinbase.size();
+            j.xnonce2_size = _xnonce2_size;
+
+            j.coinbase.insert(j.coinbase.end(), _xnonce2_size, 0);
+            if(!util::parse_hex(coinbase2, j.coinbase)) { return false; }
+
+            j.id = job_id;
+
+//            for(const auto& hex : merkle_array) {
+//                std::string s = hex.second.get_value<std::string>();
+//                util::ubytes bin;
+//                if(!util::parse_hex(s, bin)) {
+//                    return false;
+//                }
+//
+//                j.merkle.push_back(bin);
+//            }
+
+            j.diff = _next_diff;
+            j.clean = is_clean;
+            _new_job = true;
+            std::cerr << "info: " << "new solo job: " << j.id << " time: " << time << " nbits: " << nbits << " edgebits: " << j.nedgebits << " prevhash: " << prevhash << std::endl;
+
+            _job = j;
+
+            return true;
+
+        }
+
+        pt::ptree Client::convert_blocktemplate(const pt::ptree& params)
+        {
+            pt::ptree res{};
+            std::string tmp;
+            std::stringstream stream;
+
+            res.add("id", get_solo_job_id());
+
+            res.add("prevhash", params.get<std::string>("result.previousblockhash"));
+
+            // TODO: fix this
+            res.add("coinbase1", "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708");
+            res.add("coinbase2", "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000");
+
+            // Merkle array of transactions, invites and referrals
+            std::cout << std::endl << "MERKLE ARRAY WORK" << std::endl;
+            std::vector<std::string> hashes{};
+            BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("transactions")){
+                std::cout << "first : " << v.first << std::endl;
+                std::cout << "second.data : " << v.second.get<std::string>("data") << std::endl;
+                std::cout << "second.txid : " << v.second.get<std::string>("txid") << std::endl;
+                hashes.push_back(v.second.get<std::string>("txid"));
+            }
+            // 2... for refs
+            // 3... for invites
+
+            auto merkle_tree_root = merit::merkle::build<std::string, merit::merkle::DoubleSHA256StringMerkleNode>(hashes);
+
+            // push merkle branches to the result
+
+            auto block_version = boost::lexical_cast<int32_t>(params.get<std::string>("result.version")); // get version parameter
+
+            // divide into bytes and take hex of each of them
+            // e.g. 671088640 -> 2800000000
+            std::bitset<32> version_bits(block_version);
+            stream << std::hex << version_bits.to_ulong();
+
+            res.add("version", stream.str());
+            stream.clear(); stream.str("");
+
+            res.add("bits", params.get<std::string>("result.bits"));
+
+            res.add("edgebits", params.get<std::string>("result.edgebits"));
+
+            uint32_t time = static_cast<uint32_t>(atoi(params.get<std::string>("result.curtime").c_str()));
+            std::bitset<32> time_bits(time);
+            stream << std::hex << time_bits.to_ulong();
+            res.add("time", stream.str());
+            stream.clear(); stream.str("");
+
+            res.add("is_clean", true);
+
+            std::cout << "=== CONVERTING BLOCKTEMPLATE ===" << std::endl;
+            std::ostringstream oss;
+            pt::write_json(oss, res);
+            std::cout << oss.str() << std::endl;
+
+            return res;
+        }
+
         bool Client::client_reconnect(const pt::ptree& params)
         {
             auto v = params.begin();
@@ -413,6 +545,15 @@ namespace merit
                 return true;
             }
 
+            if(*method == "mining.get_solo_job"){
+                if(!mining_set_solo_job(val)){
+                    std::cerr << "error: " << "unable to set mining.set_solo_job" << std::endl;
+                    return false;
+                }
+
+                return true;
+            }
+
             auto params = val.get_child_optional("params");
             if(!params) {
                 std::cerr << "error: " << "unable to get params from response" << std::endl;
@@ -458,6 +599,7 @@ namespace merit
             _state = Authorizing;
             std::stringstream req;
             req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
+            std::cout << "=== Authorizing: " << req.str() << std::endl;
             if (!send(req.str()))
             {
                 std::cerr << "error: " << "error sending authorize request" << std::endl;
@@ -505,13 +647,13 @@ namespace merit
             return true;
         }
 
-        bool Client::run()
+        bool Client::run(bool solo_mining)
         {
             _run_state = Running;
             while (_run_state == Running)
             try {
                 std::string res;
-                if(!recv(res)) {
+                if((solo_mining && !recv_with_headers(res)) || (!solo_mining && !recv(res))) {
                     std::cerr << "error: " << "error receiving" << std::endl;
                     throw std::runtime_error("error receiving");
                 }
@@ -526,6 +668,14 @@ namespace merit
                     std::cerr << "error parsing stratum response: " << res << std::endl;
                     continue;
                 }
+
+                if(solo_mining){
+                    val.put("method", val.get<std::string>("id"));
+                }
+
+                std::ostringstream oss;
+                pt::write_json(oss, val);
+                std::cout << "JSON: " << oss.str() << std::endl;
 
                 if(!handle_command(val, res)) {
                     continue;
@@ -575,6 +725,28 @@ namespace merit
             }
 
             _new_job = false;
+            return _job;
+        }
+
+        MaybeJob Client::get_solo_job(const std::string& auth_token)
+        {
+            std::stringstream req;
+            req << "POST / HTTP/1.1\n" <<
+                   "Content-Type: text/plain\n" <<
+                   "Authorization: Basic "<< auth_token << "\n" <<
+                   "Accept: */*\n" <<
+                   "Content-Length: " << 157 + _user.size() << "\n\n" <<
+                   "{\"method\": \"getblocktemplate\", \"jsonrpc\": \"2.0\", \"params\": [{\"capabilities\": [\"coinbasetxn\", \"workid\", \"coinbase/append\"]}, \""<< _user <<"\"], \"id\": \"mining.get_solo_job\"}";
+
+            std::cout << "=== req: " << req.str() << std::endl;
+
+            if(!send(req.str())) {
+                std::cerr << "error: " << "Error getting blocktemplate for mining: " << req.str() << std::endl;
+                disconnect();
+            } else {
+                std::cout << "info: " << "getting blocktemplate for " << _user << std::endl;
+            }
+
             return _job;
         }
 
@@ -647,6 +819,8 @@ namespace merit
                 return false;
             }
 
+            std::cout << "=== Another response(subscribe_resp): " << resp_line << std::endl;
+
             pt::ptree resp;
             if(!parse_json(resp_line, resp)) {
                 std::cerr << "error: " << "error parsing response: " << resp_line << std::endl;
@@ -711,6 +885,7 @@ namespace merit
         {
             auto message_with_nl = message + "\n";
             std::lock_guard<std::mutex> guard{_sock_mutex};
+            std::cout << "=== message to send: " << message_with_nl << std::endl;
             boost::system::error_code error;
             asio::write(_socket, boost::asio::buffer(message_with_nl), error);
             return !error;
@@ -753,6 +928,8 @@ namespace merit
             message.resize(size);
             std::copy(_sockbuf.begin(), nl, message.begin());
 
+            std::cout << "=== receive message: " << message << " ===" << std::endl;
+
             if (_sockbuf.size() > size + 1) {
                 std::copy(_sockbuf.begin() + size + 1, _sockbuf.end(), _sockbuf.begin());
                 _sockbuf.resize(_sockbuf.size() - size - 1);
@@ -762,6 +939,22 @@ namespace merit
 
             return true;
         }
+
+        bool Client::recv_with_headers(std::string& res)
+        {
+            // Skip 4 lines with HTTP headers + blank line
+            recv(res); recv(res); recv(res); recv(res); recv(res);
+
+            return recv(res);
+        }
+
+        unsigned int Client::get_solo_job_id()
+        {
+            // return and increment(so all ids will be different)
+            return _solo_job_id++;
+        }
+
+
 
         void diff_to_target(std::array<uint32_t, 8>& target, double diff)
         {
