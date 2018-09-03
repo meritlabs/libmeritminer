@@ -35,62 +35,33 @@ namespace merit {
 
     namespace merkle {
 
-        template<typename T, char *(hash_func)(const T &), size_t hash_len>
-        bool MerkleNode<T, hash_func, hash_len>::validate() const {
-            // If either child is not valid, the entire subtree is invalid too.
-            if (left_ && !left_->validate()) {
-                return false;
-            }
-            if (right_ && !right_->validate()) {
-                return false;
-            }
+//        template<typename T, char *(hash_func)(const T &), size_t hash_len>
+//        bool MerkleNode<T, hash_func, hash_len>::validate() const {
+//            // If either child is not valid, the entire subtree is invalid too.
+//            if (left_ && !left_->validate()) {
+//                return false;
+//            }
+//            if (right_ && !right_->validate()) {
+//                return false;
+//            }
+//
+//            std::unique_ptr<const char> computedHash(hasChildren() ? computeHash() : hash_func(*value_));
+//            return memcmp(hash_, computedHash.get(), len()) == 0;
+//        }
+//
+//        const char *DoubleSHA256StringMerkleNode::computeHash() const {
+//            if(!right_)
+//                return left_.get()->hash();
+//
+//            return (std::string(left_.get()->hash()) + std::string(right_.get()->hash())).c_str();
+//        }
 
-            std::unique_ptr<const char> computedHash(hasChildren() ? computeHash() : hash_func(*value_));
-            return memcmp(hash_, computedHash.get(), len()) == 0;
-        }
-
-        const char *DoubleSHA256StringMerkleNode::computeHash() const {
-            if(!right_)
-                return left_.get()->hash();
-
-            return (std::string(left_.get()->hash()) + std::string(right_.get()->hash())).c_str();
-        }
-
-        char* double_hash(const std::string& str){
+        const char* double_hash(const std::string& str){
             auto *result = new unsigned char[str.size()];
             merit::util::double_sha256(result, reinterpret_cast<const unsigned char *>(str.c_str()), str.size());
-            return reinterpret_cast<char *>(result);
+            return reinterpret_cast<const char *>(result);
         }
 
-        // Recursive implementation of the build algorithm.
-        template<typename NodeType>
-        const NodeType *build_(NodeType *nodes[], size_t len) {
-
-            if (len == 1) return new NodeType(nodes[0], nullptr);
-            if (len == 2) return new NodeType(nodes[0], nodes[1]);
-
-            size_t half = len % 2 == 0 ? len / 2 : len / 2 + 1;
-            return new NodeType(build_(nodes, half), build_(nodes + half, len - half));
-        }
-
-        template<typename T, typename NodeType>
-        const NodeType *build(const std::list<T> &values) {
-
-            NodeType *leaves[values.size()];
-            int i = 0;
-            for (auto value : values) {
-                leaves[i++] = new NodeType(value);
-            }
-
-            return build_(leaves, values.size());
-        };
-
-        template<typename T, typename NodeType>
-        const NodeType *build(const std::vector<T> &values) {
-            std::list<T> lst(values.begin(), values.end());
-
-            return build<T, NodeType>(lst);
-        };
     }
 }
 

@@ -386,11 +386,11 @@ namespace merit
             _state = Running;
             while(_miner.state() == Miner::Running)
             {
-                std::cout << "in miner cycle" << std::endl;
+//                std::cout << "in miner cycle" << std::endl;
                 auto work = _miner.next_work();
 
                 if(!work) {
-                    std::cout << "There is no work!" << std::endl;
+//                    std::cout << "There is no work!" << std::endl;
                     std::this_thread::sleep_for(10ms);
                     continue;
                 }

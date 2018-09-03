@@ -37,6 +37,7 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <iterator>
@@ -277,7 +278,6 @@ namespace merit
 
             auto job_id = v->second.get_value_optional<std::string>(); v++;
             if(!job_id) { return false; }
-            std::cout << "job_id: " << typeid(job_id).name() << std::endl;
 
             auto prevhash = v->second.get_value_optional<std::string>(); v++;
             if(!prevhash) { return false; }
@@ -432,33 +432,100 @@ namespace merit
 
         pt::ptree Client::convert_blocktemplate(const pt::ptree& params)
         {
+
+            std::cout << "converting blocktemplate" << std::endl;
+
             pt::ptree res{};
             std::string tmp;
             std::stringstream stream;
 
             res.add("id", get_solo_job_id());
 
-            res.add("prevhash", params.get<std::string>("result.previousblockhash"));
+            std::cout << "0" << std::endl;
+
+            try {
+                auto prev = params.get<std::string>("result.previousblockhash");
+                prev = "353fac2931e2d8f6d3474fa66ccafe4c9de02d845b4f68b82f6816137ec57b7b";
+                std::cout << "prev: " << prev << " : " << prev.size() << std::endl;
+
+//                std::string prev_unhex;
+//                merit::util::parse_hex(prev, prev_unhex);
+//                std::cout << "prev_unhex: " << prev_unhex << " : " << prev_unhex.size() << std::endl;
+
+//                prev = "0123456789abcdef";
+//                unsigned long long prev_hex_num;
+//                std::istringstream ost(prev);
+//                ost >> std::hex >> prev_hex_num;
+
+
+//                std::cout << "prev_unhex reversed: " << prev_unhex << " : " << prev_unhex.size() << std::endl;
+
+                auto bin_prev = merit::util::HexStrToBin(prev);
+                std::cout << "bin_prev: " << bin_prev << std::endl;
+                std::cout << "bin_prev: " << bin_prev << std::endl;
+
+                auto bin_prev_reverse = merit::util::ReverseByteOrder(bin_prev);
+
+
+                std::cout << "CONVERTING TO HEX" << std::endl;
+                for(const auto& el: bin_prev_reverse){
+                    std::bitset<8> tmp(el);
+                    std::cout << " el: " << tmp.to_string() << " : " << std::hex << tmp.to_ulong() << std::endl;
+                }
+
+//            stream << std::hex << prevhash_bits.to_ulong();
+//            std::cout << "2" << std::endl;
+//
+//            std::string prevhash = stream.str();
+//            std::cout << "3" << std::endl;
+//
+//            std::reverse(prevhash.begin(), prevhash.end());
+
+                res.add("prevhash", stream.str());
+                stream.clear(); stream.str("");
+
+            } catch (std::exception &e){
+                std::cout << "   !!! === Exception === : " << e.what() << std::endl;
+            }
 
             // TODO: fix this
             res.add("coinbase1", "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708");
             res.add("coinbase2", "0b2f4d65726974506f6f6c2fffffffff160aca9a3b000000001976a9144bfac9c3a88aab06ae1dcdf59a22eef6dbab361b88acd2665703000000001976a91429b3b93cf44ffa4f14415ca00e4b7cd0a44e0b2988ac07c36003000000001976a9145cdcaad0a61feeff8c474d50daf79885bd08694188acc8d3ef02000000001976a914c5d1ce565e99547c2bf056c996b5b8409356b27d88acca231603000000001976a9144904ee33f9345b6532ade7e043f6f61e8c69e3b388acafc79703000000001976a9142c930dff417ce135d133a0d6b4bd91b27885390788acc1916f03000000001976a914d7552b88da89bce65f8e8f6825391413e03d7b7488acfeb95b03000000001976a914a6080afe276ac0f5ae29926cf3fd67539dd0dbd888ac28bf5103000000001976a9145aeb58b3a35dc7282e15ff71a6b21ee1c21021c088ac03ac3d03000000001976a9145fab2bf7f998f84bf085e44a7edb61868361a1cf88acf50e4203000000001976a91401a2071430bdd5f5264bf9970ec0cc2649cbe88988ac0e4c6a02000000001976a914dbc5297edb42d494a7de6d6e126306b83f3b805288ac397f8302000000001976a91470e932c20dc49f72eb669a6a3ad7fe026175708988aca64e3603000000001976a9149b1b860efdb47e2dd0f9504326d5217beedbba5488ac6842ad02000000001976a914efe006f514be4e91118c835966909ddabd5a633a88ac98155c02000000001976a914e5f369d2151e8591766912d406a8f884d7690cd188ac6018b702000000001976a914a5f97cb5333d20ac335431dba391d2e8b09cc33e88ac8eb6b702000000001976a91492f32bed913273f7a11dc26a21ad3c3675732d0e88ac79626502000000001976a914c82be3807dfb9f02a2996bc6ad0b5ca29297fca888ace2f38802000000001976a9143fd2058fb6faeb7090798692d1f51ad44e46960b88acc7831d03000000001976a914ee34a60e8fe4223c0ad57600b7d70713c73c216e88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000");
 
             // Merkle array of transactions, invites and referrals
-            std::cout << std::endl << "MERKLE ARRAY WORK" << std::endl;
             std::vector<std::string> hashes{};
-            BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("transactions")){
-                std::cout << "first : " << v.first << std::endl;
-                std::cout << "second.data : " << v.second.get<std::string>("data") << std::endl;
-                std::cout << "second.txid : " << v.second.get<std::string>("txid") << std::endl;
-                hashes.push_back(v.second.get<std::string>("txid"));
+            int i = 0;
+            BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("result.transactions")){
+                if (i != 0)
+                    hashes.push_back(v.second.get<std::string>("txid"));
+
+                i++;
             }
             // 2... for refs
+            BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("result.referrals")){
+                hashes.push_back(v.second.get<std::string>("hash"));
+            }
+
             // 3... for invites
+            BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("result.invites")){
+                hashes.push_back(v.second.get<std::string>("hash"));
+            }
 
-            auto merkle_tree_root = merit::merkle::build<std::string, merit::merkle::DoubleSHA256StringMerkleNode>(hashes);
+            std::cout << "MERKLE HASHES SIZE = " << hashes.size() << std::endl;
 
-            // push merkle branches to the result
+            try {
+                auto merkle_tree = merit::merkle::MerkleTree<merit::merkle::double_hash>(hashes);
+                auto branches = merkle_tree.branches();
+//            std::cout << "Branches: " << branches.size() << std::endl;
+//            for(const auto& branch: branches){
+//                std::cout << branch << std::endl;
+//            }
+
+                // push merkle branches to the result
+
+            } catch (std::exception &e) {
+                std::cout << "||| Error ||| = " << e.what() << std::endl;
+            }
 
             auto block_version = boost::lexical_cast<int32_t>(params.get<std::string>("result.version")); // get version parameter
 
@@ -612,6 +679,8 @@ namespace merit
 
         bool Client::reconnect()
         {
+
+            std::cout << std::endl << " !!! === RECONNECTING === !!! " << std::endl << std::endl;
             using namespace std::chrono_literals;
             disconnect();
             bool connected = false;
@@ -663,6 +732,8 @@ namespace merit
                 }
 
                 pt::ptree val;
+
+                std::cout << "RES: " << res << std::endl;
                 if(!parse_json(res, val)) {
                     _sockbuf.clear();
                     std::cerr << "error parsing stratum response: " << res << std::endl;
@@ -682,11 +753,13 @@ namespace merit
                 }
 
             } catch(std::exception& e) {
-                if(!reconnect()) {
-                    std::cerr << "error: " << "failed to reconnect" << std::endl;
-                    return false;
-                } else if(_run_state == Running) {
-                    std::cerr << "info: reconnected!" << std::endl;
+                if(!solo_mining){ // TODO: remove this if statement later
+                    if(!reconnect()) {
+                        std::cerr << "error: " << "failed to reconnect" << std::endl;
+                        return false;
+                    } else if(_run_state == Running) {
+                        std::cerr << "info: reconnected!" << std::endl;
+                    }
                 }
             }
 
@@ -928,7 +1001,7 @@ namespace merit
             message.resize(size);
             std::copy(_sockbuf.begin(), nl, message.begin());
 
-            std::cout << "=== receive message: " << message << " ===" << std::endl;
+//            std::cout << "=== receive message: " << message << " ===" << std::endl;
 
             if (_sockbuf.size() > size + 1) {
                 std::copy(_sockbuf.begin() + size + 1, _sockbuf.end(), _sockbuf.begin());

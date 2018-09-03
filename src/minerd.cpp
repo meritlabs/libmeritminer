@@ -67,7 +67,7 @@ int main(int argc, char** argv)
             ("solo", po::value<bool>(&solo_mining)->default_value(false), "Enable solo-mining or not?")
             ("token", po::value<std::string>(&auth_token)->default_value("bWVyaXRycGM6TERwaWtWYkRpM2VYX042UHdQZy1OVVk3Q0RCSGtMOG11Z0pjX0JYNTdnVT0="),
              "RPC token for solo-mining. You can set it in the merit.conf")
-            ("solourl", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:18332"),
+            ("solourl", po::value<std::string>(&solo_url)->default_value("=stratum+tcp://127.0.0.1:8332"), // 18332 -> testnet, 8332 -> livenet
              "Solo mining stratum server url")
             ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(),
              "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")

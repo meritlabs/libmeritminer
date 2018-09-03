@@ -226,15 +226,18 @@ namespace merit {
                 std::cout << "Miner is Running and ready to start getting job and then mine it" << std::endl;
 
                 // TODO: fix this when implementing server support for solo mining
-                c->stratum.stop(); // disconnect from server
+//                c->stratum.stop(); // disconnect from server
 
                 while (c->miner->running())
                     try {
                         auto j = c->stratum.get_solo_job(auth_token);
 
+                        std::this_thread::sleep_for(20s);
+
                         if(j){
+                            std::cout << "There is a job!!!" << std::endl;
                             std::this_thread::sleep_for(5s);
-                            break;
+//                            break;
                         }
 //                        if (!j) {
 //                            std::cout << "== NO JOB! ==" << std::endl;

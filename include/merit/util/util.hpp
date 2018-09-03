@@ -85,6 +85,9 @@ static inline void le32enc(void *pp, uint32_t x)
 #if defined(__linux__)
 // Linux 
 #include <endian.h>    // for htole32/64
+#include <bitset>
+#include <netinet/in.h>
+#include <iostream>
 
 #elif defined(__APPLE__)
 // macOS
@@ -166,23 +169,29 @@ namespace merit
             boost::algorithm::hex_lower(begin, end, std::back_inserter(res));
         }
 
-        bool reverse_hex_string(const std::string& str, std::string& res)
-        {
-            std::string tmp;
+//        bool reverse_hex_string(const std::string& str, std::string& res)
+//        {
+//            std::string tmp;
+//
+//            try
+//            {
+//                util::parse_hex(str, tmp);
+//                tmp.reserve();
+//                util::to_hex(tmp, res);
+//
+//                return true;
+//            }
+//            catch (...)
+//            {
+//                return false;
+//            }
+//        }
 
-            try
-            {
-                util::parse_hex(str, tmp);
-                tmp.reserve();
-                util::to_hex(tmp, res);
+        std::string HexCharToBin(char c);
+        std::string HexStrToBin(const std::string & hs);
+        std::vector<char> ReverseByteOrder(const std::string& binary);
 
-                return true;
-            }
-            catch (...)
-            {
-                return false;
-            }
-        }
+
 
         void double_sha256(
                 unsigned char* digest,
