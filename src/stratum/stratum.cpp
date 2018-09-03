@@ -192,11 +192,7 @@ namespace merit
             auto endpoints = resolver.resolve(query);
 
             boost::system::error_code e;
-            boost::asio::ip::tcp::resolver::iterator end;
-
-            if(boost::asio::connect(_socket, endpoints, e) == end){
-                return false;
-            }
+            boost::asio::connect(_socket, endpoints, e);
 
             if(e) {
                 disconnect();

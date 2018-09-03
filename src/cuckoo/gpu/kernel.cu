@@ -828,7 +828,9 @@ bool FindCycles(
                             buffer_a,
                             indexes_e2,
                             recovery);
-                    cycles.emplace_back(cycle);
+                    if (cycle.size() == proof_size) {
+                        cycles.emplace_back(cycle);
+                    }
                 }
             } else if (nu < nv) {
                 while (nu--) {

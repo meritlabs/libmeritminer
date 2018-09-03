@@ -474,6 +474,9 @@ namespace merit
 
                     int idx = 0;
                     for(const auto& cycle: cycles) {
+                        assert(cycle.size() == work->cycle.size());
+                        assert(work->cycle.size() == CUCKOO_PROOF_SIZE);
+
                         std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
                         std::array<uint32_t, 8> cycle_hash;
                         std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;

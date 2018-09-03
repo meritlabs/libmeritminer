@@ -1142,7 +1142,7 @@ namespace merit
                             jobs.push_back(
                                     pool.push(
                                         [this, t](int id) {
-                                        matchworker<offset_t, EDGEBITS, XBITS>(this, t);
+                                            matchworker<offset_t, EDGEBITS, XBITS>(this, t);
                                         }));
                         }
 
@@ -1150,7 +1150,8 @@ namespace merit
                             j.wait();
                         }
 
-                        qsort(&sols[sols.size() - proofSize], proofSize, sizeof(std::uint32_t), nonce_cmp);
+                        auto start = sols.begin() + (sols.size() - proofSize);
+                        std::sort(start, start + proofSize); 
                     }
 
                     static const std::uint32_t CUCKOO_NIL = ~0;
