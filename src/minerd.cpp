@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     }
 
     if(address.empty()) {
-        std::cerr << "forgot to set your reward address. use --address" << std::endl;
+        std::cerr << termcolor::red << "forgot to set your reward address. use -a or --address" << termcolor::reset << std::endl;
         return 1;
     }
 
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     auto info = merit::gpus_info();
     for(const auto& device: gpu_devices){
         if(device >= info.size() || device < 0){
-            std::cerr << "There is no GPU device with index = " << device << ". Please check available GPU devices by using --infogpu argument." << std::endl;
+            std::cerr << termcolor::red << "There is no GPU device with index = " << device << ". Please check available GPU devices by using --infogpu argument." << termcolor::reset << std::endl;
             return 1;
         }
     }

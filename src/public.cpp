@@ -87,7 +87,7 @@ namespace merit
     {
         assert(c);
 
-        std::cout << "info :: " << "connecting to: " << url << termcolor::reset << std::endl; 
+        std::cout << "info :: " << "connecting to: " << url << std::endl; 
         if(!c->stratum.connect(url, user, pass)) {
             std::cerr << termcolor::red << "error: " << "error connecting to stratum server: " << url << termcolor::reset << std::endl; 
             return false;
@@ -127,8 +127,8 @@ namespace merit
     {
         c->stratum.switch_pool();
 
-        std::cerr << std::endl << "error: " << "failed to connect to the pool= " << url << std::endl;
-        std::cout << "info: " << "reconnecting to another pool= " << c->stratum.get_url() << std::endl << std::endl;
+        std::cerr << std::endl << termcolor::red << "error: " << "failed to connect to the pool= " << url << termcolor::reset << std::endl;
+        std::cout << "info :: " << "reconnecting to another pool= " << c->stratum.get_url() << std::endl << std::endl;
 
         return connect_stratum(c, c->stratum.get_url().c_str(), user, pass);
     }

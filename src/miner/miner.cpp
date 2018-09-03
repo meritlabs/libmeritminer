@@ -264,7 +264,7 @@ namespace merit
                                 try {
                                     worker.run(); 
                                 } catch( std::exception& e) {
-                                    std::cout << "mining worker " << id << " error: " << e.what() << std::endl;
+                                    std::cerr << termcolor::red << "mining worker " << id << " error: " << e.what() << termcolor::reset << std::endl;
                                 }
                             }));
             }
