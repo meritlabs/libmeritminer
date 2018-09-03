@@ -37,6 +37,7 @@
 #include "device_functions.h"
 #include "exceptions.h"
 #include "merit/nvml/nvml.h"
+#include "merit/termcolor/termcolor.hpp"
 #include <xmmintrin.h>
 #include <algorithm>
 #include <stdio.h>
@@ -1025,7 +1026,7 @@ std::unique_ptr<nvml::nvml_handle, int (*)(nvml::nvml_handle *)> initNVML(){
     auto nvml = std::unique_ptr<nvml::nvml_handle, int (*)(nvml::nvml_handle *)>(nvml::nvml_create(), nvml::nvml_destroy);
 
     if (nvml == nullptr)
-        std::cerr << "Failed to initialize NVML" << std::endl;
+        std::cerr << termcolor::red << "Failed to initialize NVML" << termcolor::reset << std::endl;
 
     return nvml;
 }
@@ -1052,13 +1053,13 @@ std::vector<merit::GPUInfo> GPUsInfo()
         // Get device
         auto nvmlres = nvml->nvmlDeviceGetHandleByIndex(index, &device);
         if (nvml::NVML_SUCCESS != nvmlres)
-            std::cerr << "Failed to get handle for device " << index << " " << nvml->nvmlErrorString(nvmlres) << std::endl;
+            std::cerr << termcolor::red << "Failed to get handle for device " << index << " " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
 
         // Temperature
         unsigned int temp;
         nvmlres = nvml->nvmlDeviceGetTemperature(device, 0, &temp);
         if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << "Failed to get temperature of device" << index << " " << nvml->nvmlErrorString(nvmlres) << std::endl;
+            std::cerr << termcolor::red << "Failed to get temperature of device" << index << " " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
             item.temperature = -1;
         } else {
             item.temperature = temp;
@@ -1068,7 +1069,7 @@ std::vector<merit::GPUInfo> GPUsInfo()
         nvml::nvmlUtilization_t gpuUtil;
         nvmlres = nvml->nvmlDeviceGetUtilizationRates(device, &gpuUtil);
         if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << "Failed to get utilization of device " << index << " : " << nvml->nvmlErrorString(nvmlres) << std::endl;
+            std::cerr << termcolor::red << "Failed to get utilization of device " << index << " : " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
             item.gpu_util = -1;
             item.memory_util = -1;
         } else {
@@ -1080,7 +1081,7 @@ std::vector<merit::GPUInfo> GPUsInfo()
         unsigned int speed;
         nvmlres = nvml->nvmlDeviceGetFanSpeed(device, &speed);
         if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << "Failed to get fan speed of device " <<  index <<  " : " << nvml->nvmlErrorString(nvmlres) << std::endl;
+            std::cerr << termcolor::red << "Failed to get fan speed of device " <<  index <<  " : " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
             item.fan_speed = -1;
         } else {
             item.fan_speed = speed;

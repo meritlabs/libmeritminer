@@ -29,6 +29,7 @@
  * also delete it here.
  */
 #include "merit/stratum/stratum.hpp"
+#include "merit/termcolor/termcolor.hpp"
 
 #include <chrono>
 #include <boost/property_tree/ptree.hpp>
@@ -88,7 +89,7 @@ namespace merit
                 const std::string& version)
         {
             _agent = software + "/" + version;
-            std::cerr << "setting agent to: " << _agent << std::endl;
+            std::cout << "info :: setting agent to: " << _agent << std::endl;
         }
 
         bool set_socket_opts(asio::ip::tcp::socket& sock)
@@ -106,7 +107,7 @@ namespace merit
                         &vals,
                         sizeof(vals),
                         NULL, 0, &outputBytes, NULL, NULL)) {
-                std::cerr << "error: " << "error setting keepalive" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepalive" << termcolor::reset << std::endl;
                 return false;
             }
 #else
@@ -116,7 +117,7 @@ namespace merit
                         SO_KEEPALIVE,
                         &CKEEPALIVE,
                         sizeof(CKEEPALIVE))) {
-                std::cerr << "error: " << "error setting keepalive" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepalive" << termcolor::reset << std::endl;
                 return false;
             }
 #ifdef __linux
@@ -126,7 +127,7 @@ namespace merit
                         TCP_KEEPCNT,
                         &CTCP_KEEPCNT,
                         sizeof(CTCP_KEEPCNT))) {
-                std::cerr << "error: " << "error setting keepcnt" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepcnt" << termcolor::reset << std::endl;
                 return false;
             }
             if (setsockopt(
@@ -135,7 +136,7 @@ namespace merit
                         TCP_KEEPIDLE,
                         &CTCP_KEEPIDLE,
                         sizeof(CTCP_KEEPIDLE))) {
-                std::cerr << "error: " << "error setting keepidle" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepidle" << termcolor::reset << std::endl;
                 return false;
             }
             if (setsockopt(
@@ -144,7 +145,7 @@ namespace merit
                         TCP_KEEPINTVL,
                         &CTCP_KEEPINTVL,
                         sizeof(CTCP_KEEPINTVL))) {
-                std::cerr << "error: " << "error setting keepintvl" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepintvl" << termcolor::reset << std::endl;
                 return false;
             }
 #endif
@@ -155,7 +156,7 @@ namespace merit
                         TCP_KEEPALIVE,
                         &CTCP_KEEPINTVL,
                         sizeof(CTCP_KEEPINTVL))) {
-                std::cerr << "error: " << "error setting keepintvl" << std::endl;
+                std::cerr << termcolor::red << "error: " << "error setting keepintvl" << termcolor::reset << std::endl;
                 return false;
             }
 #endif
@@ -183,8 +184,8 @@ namespace merit
             _host = _url.substr(host_pos, port_pos - host_pos - 1);
             _port = _url.substr(port_pos);
 
-            std::cerr << "info: " << "host: " << _host << std::endl;
-            std::cerr << "info: " << "port: " << _port << std::endl;
+            std::cout << "info :: " << "host: " << _host << std::endl;
+            std::cout << "info :: " << "port: " << _port << std::endl;
 
             asio::ip::tcp::resolver resolver{_service};
             asio::ip::tcp::resolver::query query{_host, _port};
@@ -240,7 +241,7 @@ namespace merit
         }
         catch(std::exception& e)
         {
-            std::cerr << "error: " << "error parsing json: " << e.what() << std::endl;
+            std::cerr << termcolor::red << "error :: " << "error parsing json: " << e.what() << termcolor::reset << std::endl;
             return false;
         }
 
@@ -342,7 +343,7 @@ namespace merit
             j.diff = _next_diff;
             j.clean = *is_clean;
             _new_job = true;
-            std::cerr << "info: " << "notify: " << j.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << j.nedgebits << " prevhash: " << *prevhash << std::endl;
+            std::cout << "info :: " << "notify: " << j.id << " time: " << *time << " nbits: " << *nbits << " edgebits: " << j.nedgebits << " prevhash: " << *prevhash << std::endl;
 
             _job = j;
 
@@ -358,7 +359,7 @@ namespace merit
             }
 
             _next_diff = *diff;
-            std::cerr << "info: " << "difficulty: " << *diff << std::endl;
+            std::cout << "info :: " << termcolor::yellow << "difficulty: " << *diff << termcolor::reset << std::endl;
             return true;
         }
 
@@ -403,7 +404,7 @@ namespace merit
             auto v = params.begin();
             auto msg = v->second.get_value_optional<std::string>(); v++;
             if(msg) {
-                std::cerr << "info: " << "message: " << *msg << std::endl;
+                std::cout << "info :: " << "message: " << termcolor::cyan << *msg  << termcolor::reset << std::endl;
             }
 
             return true;
@@ -419,39 +420,39 @@ namespace merit
 
             auto params = val.get_child_optional("params");
             if(!params) {
-                std::cerr << "error: " << "unable to get params from response" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "unable to get params from response" << termcolor::reset << std::endl;
                 return false;
             }
 
             if(*method == "mining.notify") {
                 if(!mining_notify(*params)) {
-                    std::cerr << "error: " << "unable to set mining.notify" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unable to set mining.notify" << termcolor::reset << std::endl;
                     return false;
                 }
             } else if(*method == "mining.set_difficulty") {
                 if(!mining_difficulty(*params)) {
-                    std::cerr << "error: " << "unable to set mining.difficulty" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unable to set mining.difficulty" << termcolor::reset << std::endl;
                     return false;
                 }
             } else if(*method == "client.reconnect") {
                 if(!client_reconnect(*params)) {
-                    std::cerr << "error: " << "unable to execute client.reconnect" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unable to execute client.reconnect" << termcolor::reset << std::endl;
                     return false;
                 }
             } else if(*method == "client.get_version") {
                 if(!id || !client_get_version(*id)) {
-                    std::cerr << "error: " << "unable to execute client.get_version" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unable to execute client.get_version" << termcolor::reset << std::endl;
                     return false;
                 }
             } else if(*method == "client.show_message") {
                 if(!id) { return true; }
 
                 if(!client_show_message(*params, *id)) {
-                    std::cerr << "error: " << "unable to execute client.show_message" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unable to execute client.show_message" << termcolor::reset << std::endl;
                     return false;
                 }
             } else {
-                std::cerr << "unknown method: '" << *method << "' message: " << res << std::endl;
+                std::cerr << termcolor::red << "error :: unknown method: '" << *method << "' message: " << res << termcolor::reset << std::endl;
             }
 
             return true;
@@ -464,7 +465,7 @@ namespace merit
             req << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _user << "\", \"" << _pass << "\"]}";
             if (!send(req.str()))
             {
-                std::cerr << "error: " << "error sending authorize request" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "error sending authorize request" << termcolor::reset << std::endl;
                 return false;
             }
 
@@ -490,7 +491,7 @@ namespace merit
                     }
                 }
                 catch(std::exception e) {
-                    std::cerr << "error: " << "error reconnecting: " << e.what() << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "error reconnecting: " << e.what() << termcolor::reset << std::endl;
                 }
 
                 if(!connected) {
@@ -509,7 +510,7 @@ namespace merit
                     auto t = min_reconnect_time * dist(_mt);
                     tries++;
 
-                    std::cerr << "error: " << "error connecting, reconnecting in " << t.count() << "ms..." << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "error connecting, reconnecting in " << t.count() << "ms..." << termcolor::reset << std::endl;
                     std::this_thread::sleep_for(t);
                 }
             }
@@ -532,18 +533,18 @@ namespace merit
             try {
                 std::string res;
                 if(!recv(res)) {
-                    std::cerr << "error: " << "error receiving" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "error receiving" << termcolor::reset << std::endl;
                     throw std::runtime_error("error receiving");
                 }
                 if(_run_state == Running && _state == Disconnected) {
-                    std::cerr << "error: disconnected: " << std::endl;
+                    std::cerr << termcolor::red << "error :: disconnected: " << termcolor::reset << std::endl;
                     throw std::runtime_error("disconnected.");
                 }
 
                 pt::ptree val;
                 if(!parse_json(res, val)) {
                     _sockbuf.clear();
-                    std::cerr << "error parsing stratum response: " << res << std::endl;
+                    std::cerr << termcolor::red << "error :: error parsing stratum response: " << res << termcolor::reset << std::endl;
                     continue;
                 }
 
@@ -553,15 +554,15 @@ namespace merit
 
             } catch(std::exception& e) {
                 if(!reconnect()) {
-                    std::cerr << "error: " << "failed to reconnect" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "failed to reconnect" << termcolor::reset << std::endl;
                     return false;
                 } else if(_run_state == Running) {
-                    std::cerr << "info: reconnected!" << std::endl;
+                    std::cout << "info :: reconnected!" << std::endl;
                 }
             }
 
             _run_state = NotRunning;
-            std::cerr << "info: stratum stopped." << std::endl;
+            std::cout << "info :: stratum stopped." << std::endl;
 
             return true;
         }
@@ -636,10 +637,10 @@ namespace merit
                 << "\"" << cycle.str() << "\"], \"id\":4}";
 
             if(!send(req.str())) {
-                std::cerr << "error: " << "Error submitting work: " << req.str() << std::endl;
+                std::cerr << termcolor::red << "error :: " << "Error submitting work: " << req.str() << termcolor::reset << std::endl;
                 disconnect();
             } else {
-                std::cerr << "info: " << "submitted work: " << req.str() << std::endl;
+                std::cout << "info :: " << termcolor::green << "submitted work: " << req.str() << termcolor::reset << std::endl;
             }
         }
 
@@ -654,7 +655,7 @@ namespace merit
             }
 
             if (!send(req.str())) {
-                std::cerr << "error: " << "subscribe failed" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "subscribe failed" << termcolor::reset << std::endl;
                 return false;
             }
             return subscribe_resp();
@@ -669,7 +670,7 @@ namespace merit
 
             pt::ptree resp;
             if(!parse_json(resp_line, resp)) {
-                std::cerr << "error: " << "error parsing response: " << resp_line << std::endl;
+                std::cerr << termcolor::red << "error :: " << "error parsing response: " << resp_line << termcolor::reset << std::endl;
                 return false;
             }
 
@@ -677,20 +678,20 @@ namespace merit
             if(!result) {
                 auto err = resp.get_optional<std::string>("error");
                 if(err) {
-                    std::cerr << "error: " << "subscribe error : " << *err << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "subscribe error : " << *err << termcolor::reset << std::endl;
                 } else {
-                    std::cerr << "error: " << "unknown subscribe error" << std::endl;
+                    std::cerr << termcolor::red << "error :: " << "unknown subscribe error" << termcolor::reset << std::endl;
                 }
                 return false;
             }
 
             if(result->size() < 3) {
-                std::cerr << "error: " << "not enough values in response" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "not enough values in response" << termcolor::reset << std::endl;
                 return false;
             }
 
             if(!find_session_id(*result, _session_id)) {
-                std::cerr << "error: " << "failed to find the session id" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "failed to find the session id" << termcolor::reset << std::endl;
                 return false;
             }
 
@@ -699,27 +700,27 @@ namespace merit
 
             auto xnonce1 = res->second.get_value_optional<std::string>();
             if(!xnonce1) {
-                std::cerr << "error: " << "invalid extranonce" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "invalid extranonce" << termcolor::reset << std::endl;
                 return false;
             }
 
             res++;
             auto xnonce2_size = res->second.get_value_optional<int>();
             if(!xnonce2_size) {
-                std::cerr << "error: " << "cannot parse extranonce size" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "cannot parse extranonce size" << termcolor::reset << std::endl;
                 return false;
             }
 
             _xnonce2_size = *xnonce2_size;
 
             if (_xnonce2_size < 0 || _xnonce2_size > 100) {
-                std::cerr << "error: " << "invalid extranonce2 size" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "invalid extranonce2 size" << termcolor::reset << std::endl;
                 return false;
             }
 
             _xnonce1.clear();
             if(!util::parse_hex(*xnonce1, _xnonce1)) {
-                std::cerr << "error: " << "error parsing extranonce1" << std::endl;
+                std::cerr << termcolor::red << "error :: " << "error parsing extranonce1" << termcolor::reset << std::endl;
             }
             _next_diff = 1.0;
 
@@ -752,7 +753,7 @@ namespace merit
                     boost::system::error_code error;
                     auto len = _socket.read_some(asio::buffer(s), error);
                     if(error && error != boost::asio::error::eof) {
-                        std::cerr << "error: " << "error receiving data: " << error << std::endl;
+                        std::cerr << termcolor::red << "error :: " << "error receiving data: " << error << termcolor::reset << std::endl;
                         return false;
                     }
 
