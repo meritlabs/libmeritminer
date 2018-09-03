@@ -38,6 +38,7 @@
 #include <vector>
 #include <thread>
 #include <utility>
+#include <deque>
 
 #include <boost/program_options.hpp>
 
@@ -54,16 +55,19 @@ int main(int argc, char** argv)
 
     po::options_description desc("Allowed options");
     std::string url;
+    std::vector<std::string> all_pools_url;
+
+    std::deque<std::string> reserve_pools_url_deq;
     std::vector<int> gpu_devices;
     std::string address;
     desc.add_options()
-        ("help", "show the help message")
-        ("infogpu", "show the info about GPU in your system")
-        ("url", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
-        ("address", po::value<std::string>(&address), "The address to send mining rewards to.")
-        ("gpu", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
-        ("cores", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
-
+        ("help,h", "show the help message")
+        ("infogpu,i", "show the info about GPU in your system")
+        ("url,u", po::value<std::string>(&url)->default_value("stratum+tcp://pool.merit.me:3333"), "The stratum pool url")
+        ("reserveurl,r", po::value<std::vector<std::string>>(&all_pools_url)->multitoken(), "Reserved pools url")
+        ("address,a", po::value<std::string>(&address), "The address to send mining rewards to.")
+        ("gpu,g", po::value<std::vector<int>>(&gpu_devices)->multitoken(), "Index of GPU device to use in mining(can use multiple times). For more info check --infogpu")
+        ("cores,c", po::value<int>()->default_value(merit::number_of_cores()), "The number of CPU cores to use.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -95,6 +99,15 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    // Validate input GPU device indexes
+    auto info = merit::gpus_info();
+    for(const auto& device: gpu_devices){
+        if(device >= info.size() || device < 0){
+            std::cerr << "There is no GPU device with index = " << device << ". Please check available GPU devices by using --infogpu argument." << std::endl;
+            return 1;
+        }
+    }
+
     int cores;
     cores = vm["cores"].as<int>();
     cores = std::max(0, cores);
@@ -103,12 +116,15 @@ int main(int argc, char** argv)
     std::unique_ptr<merit::Context, decltype(&merit::delete_context)> c{
         merit::create_context(), &merit::delete_context};
 
+    all_pools_url.insert(all_pools_url.begin(), url);
+    
     merit::set_agent(c.get(), "merit-minerd", "0.4");
+    merit::set_reserve_pools(c.get(), all_pools_url);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
-        std::cerr << termcolor::red << "Error connecting" << termcolor::reset << std::endl;
-        return 1;
+        while(!merit::reconnect_stratum(c.get(), url.c_str(), address.c_str(), "")){}
     }
+    
     merit::run_stratum(c.get());
     merit::run_miner(c.get(), utilization.first ,utilization.second, gpu_devices);
 
