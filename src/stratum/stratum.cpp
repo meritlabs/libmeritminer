@@ -432,7 +432,6 @@ namespace merit
 
         pt::ptree Client::convert_blocktemplate(const pt::ptree& params)
         {
-
             std::cout << "converting blocktemplate" << std::endl;
 
             pt::ptree res{};
@@ -443,50 +442,20 @@ namespace merit
 
             std::cout << "0" << std::endl;
 
-            try {
-                auto prev = params.get<std::string>("result.previousblockhash");
-                prev = "353fac2931e2d8f6d3474fa66ccafe4c9de02d845b4f68b82f6816137ec57b7b";
-                std::cout << "prev: " << prev << " : " << prev.size() << std::endl;
+            auto prev = params.get<std::string>("result.previousblockhash");
 
-//                std::string prev_unhex;
-//                merit::util::parse_hex(prev, prev_unhex);
-//                std::cout << "prev_unhex: " << prev_unhex << " : " << prev_unhex.size() << std::endl;
+            // then divide to the 8 sybmols parts, reverse array of this parts and join them together
+            std::string reversed_prevblockhash;
+            std::vector<std::string> parts_of_hash;
+            for (int i = 0; i < 8; ++i)
+                parts_of_hash.push_back(prev.substr(8 * i, 8));
 
-//                prev = "0123456789abcdef";
-//                unsigned long long prev_hex_num;
-//                std::istringstream ost(prev);
-//                ost >> std::hex >> prev_hex_num;
+            std::reverse(parts_of_hash.begin(), parts_of_hash.end());
 
+            for(const auto& part: parts_of_hash)
+                reversed_prevblockhash += part;
 
-//                std::cout << "prev_unhex reversed: " << prev_unhex << " : " << prev_unhex.size() << std::endl;
-
-                auto bin_prev = merit::util::HexStrToBin(prev);
-                std::cout << "bin_prev: " << bin_prev << std::endl;
-                std::cout << "bin_prev: " << bin_prev << std::endl;
-
-                auto bin_prev_reverse = merit::util::ReverseByteOrder(bin_prev);
-
-
-                std::cout << "CONVERTING TO HEX" << std::endl;
-                for(const auto& el: bin_prev_reverse){
-                    std::bitset<8> tmp(el);
-                    std::cout << " el: " << tmp.to_string() << " : " << std::hex << tmp.to_ulong() << std::endl;
-                }
-
-//            stream << std::hex << prevhash_bits.to_ulong();
-//            std::cout << "2" << std::endl;
-//
-//            std::string prevhash = stream.str();
-//            std::cout << "3" << std::endl;
-//
-//            std::reverse(prevhash.begin(), prevhash.end());
-
-                res.add("prevhash", stream.str());
-                stream.clear(); stream.str("");
-
-            } catch (std::exception &e){
-                std::cout << "   !!! === Exception === : " << e.what() << std::endl;
-            }
+            res.add("prevhash", reversed_prevblockhash);
 
             // TODO: fix this
             res.add("coinbase1", "02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1d03693e0503366c1708");
