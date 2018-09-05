@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
     all_pools_url.insert(all_pools_url.begin(), url);
     
-    merit::set_agent(c.get(), "merit-minerd", "0.4");
+    merit::set_agent(c.get(), "merit-minerd", "0.5");
     merit::set_reserve_pools(c.get(), all_pools_url);
 
     if(!merit::connect_stratum(c.get(), url.c_str(), address.c_str(), "")) {
