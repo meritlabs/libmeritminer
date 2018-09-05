@@ -189,9 +189,6 @@ namespace merit
 
         std::string HexCharToBin(char c);
         std::string HexStrToBin(const std::string & hs);
-        std::vector<char> ReverseByteOrder(const std::string& binary);
-
-
 
         void double_sha256(
                 unsigned char* digest,

@@ -481,9 +481,18 @@ namespace merit
             }
 
             std::cout << "MERKLE HASHES SIZE = " << hashes.size() << std::endl;
+            for(const auto& hash: hashes)
+                std::cout << "Hash: " << hash << std::endl;
+            std::cout << std::endl << std::endl;
 
+            // Input: 
+            // 1. af5269712e2ccf2d2ff9c3022f03b2b2d252bccc4c01eab5c687f655ba0834cc 
+
+            // Result:
+            // 1. cc3408ba55f687c6b5ea014cccbc52d2b2b2032f02c3f92f2dcf2c2e716952af
+            
             try {
-                auto merkle_tree = merit::merkle::MerkleTree<merit::merkle::double_hash>(hashes);
+                auto merkle_tree = merit::merkle::MerkleTree(hashes);
                 auto branches = merkle_tree.branches();
 //            std::cout << "Branches: " << branches.size() << std::endl;
 //            for(const auto& branch: branches){

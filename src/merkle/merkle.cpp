@@ -29,32 +29,107 @@
  * also delete it here.
  */
 
+#include <merit/merkle/merkle.hpp>
+
 #include "merit/merkle/merkle.hpp"
 
 namespace merit {
 
     namespace merkle {
 
-//        template<typename T, char *(hash_func)(const T &), size_t hash_len>
-//        bool MerkleNode<T, hash_func, hash_len>::validate() const {
-//            // If either child is not valid, the entire subtree is invalid too.
-//            if (left_ && !left_->validate()) {
-//                return false;
-//            }
-//            if (right_ && !right_->validate()) {
-//                return false;
-//            }
-//
-//            std::unique_ptr<const char> computedHash(hasChildren() ? computeHash() : hash_func(*value_));
-//            return memcmp(hash_, computedHash.get(), len()) == 0;
-//        }
-//
-//        const char *DoubleSHA256StringMerkleNode::computeHash() const {
-//            if(!right_)
-//                return left_.get()->hash();
-//
-//            return (std::string(left_.get()->hash()) + std::string(right_.get()->hash())).c_str();
-//        }
+        std::vector<std::string> MerkleTree::branches() {
+            std::cout << "=== Trying to get branches... === " << std::endl;
+
+            std::cout << "    == Before hexing: " << std::endl;
+            for(const auto& s: steps){
+                std::cout << "step: " << s << std::endl;
+            }
+            std::cout << "  That's all ==" << std::endl << std::endl;
+
+
+            std::vector<std::string> branches;
+            std::string tmp_hash;
+            std::stringstream stream;
+
+            std::cout << "before foreach loop" << std::endl;
+
+            for (const auto &step: steps) {
+                std::cout << "looping..." << std::endl;
+                std::string tmp{step};
+                std::cout << "Step: " << step << " : " << tmp << std::endl;
+                std::string step_hex;
+
+                merit::util::to_hex(tmp.begin(), tmp.end(), step_hex);
+
+                std::cout << "Step HEX: " << step_hex << std::endl;
+
+//                    std::bitset<picosha2::k_digest_size*8> version_bits(step_binary);
+//                    stream << std::hex << version_bits.to_ullong();
+//                    branches.push_back(stream.str()); stream.str("");
+                branches.push_back(step_hex);
+            }
+
+            std::cout << "End loop and function stuff ===" << std::endl;
+
+
+            return branches;
+        }
+
+        std::vector<const char *> MerkleTree::calculateSteps(const std::vector<std::string> &hashes_list) {
+            std::cout << "=== calculateSteps()" << std::endl;
+
+            std::vector<const char *> steps{};
+            std::vector<const char *> L{nullptr};
+            for (const auto &el: hashes_list) {
+                L.push_back(el.c_str());
+            }
+
+            int startL = 2;
+            unsigned long Ll = L.size();
+
+            if (Ll > 1)
+            {
+                std::cout << "Calculating steps.." << std::endl;
+                while (true)
+                {
+                    std::cout << "   while loop..." << std::endl;
+
+                    if(Ll == 1)
+                        break;
+
+                    steps.push_back(L[1]);
+
+                    if(Ll % 2 == 1)
+                        L.push_back(L[L.size() - 1]);
+
+                    std::vector<const char*> Ld;
+
+                    for (int i = startL; i < Ll; i += 2) {
+                        Ld.push_back(merkleJoin(L[i], L[i+1]));
+                    }
+
+                    L.clear(); L.push_back(nullptr);
+                    for(const auto& el: Ld)
+                        L.push_back(el);
+
+                    Ll = L.size();
+
+                    std::cout << "   end of while loop" << std::endl;
+
+                }
+            }
+
+            std::cout << " end of Calculating steps function ===" << std::endl;
+
+            return steps;
+        }
+
+        const char *MerkleTree::merkleJoin(const char *h1, const char *h2){
+            std::string joined = h1;
+            joined.append(h2);
+
+            return double_hash(joined);
+        }
 
         const char* double_hash(const std::string& str){
             auto *result = new unsigned char[str.size()];

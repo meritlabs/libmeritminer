@@ -85,24 +85,5 @@ namespace merit
             return bin;
         }
 
-        std::vector<char> ReverseByteOrder(const std::string& binary){
-            std::vector<char> result;
-
-            for (unsigned int i = 0; i < 8; ++i) { // binary.size() / 32
-                std::bitset<32> tmp_32{binary.substr(i*32, (i+1) * 32)};
-                auto endian_32 = htonl(static_cast<uint32_t>(tmp_32.to_ulong()));
-
-                std::bitset<32> tmp_32_{endian_32};
-                std::cout << " ||| function: " << tmp_32_.to_string() << std::endl;
-
-                for (int j = 0; j < 4; j++)
-                    result.push_back(static_cast<char &&>(endian_32 >> (j * 8)));
-            }
-
-//            std::reverse(result.begin(), result.end());
-
-            return result;
-        }
-
     }
 }
