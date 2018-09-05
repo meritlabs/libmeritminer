@@ -87,6 +87,10 @@ namespace merit
     {
         assert(c);
 
+        c->submit_work_func = [c](const util::Work& w) {
+            c->stratum.submit_work(w);
+        };
+
         std::cout << "info :: " << "connecting to: " << url << std::endl; 
         if(!c->stratum.connect(url, user, pass)) {
             std::cerr << termcolor::red << "error: " << "error connecting to stratum server: " << url << termcolor::reset << std::endl; 
@@ -104,10 +108,6 @@ namespace merit
             std::cerr << termcolor::red << "error: " << "error authorize to stratum server: " << url << termcolor::reset << std::endl; 
             return false;
         }
-
-        c->submit_work_func = [c](const util::Work& w) {
-            c->stratum.submit_work(w);
-        };
 
         std::cout << "info :: " << termcolor::green << "connected to: " << url << termcolor::reset << std::endl; 
         return true;
@@ -166,7 +166,7 @@ namespace merit
                 try {
                     c->stratum.run();
                 } catch(std::exception& e) {
-                std::cerr << termcolor::red << "error: " << "error running stratum: " << e.what() << termcolor::reset << std::endl; 
+                    std::cerr << termcolor::red << "error: " << "error running stratum: " << e.what() << termcolor::reset << std::endl; 
                 }
                 c->stratum.disconnect();
                 std::cout << "info :: " << "stopped stratum."<< std::endl; 
@@ -212,8 +212,6 @@ namespace merit
                 } catch(std::exception& e) {
                     c->miner->stop();
                     std::cerr << termcolor::red << "error: " << e.what() << termcolor::reset << std::endl;
-
-                    return false;
                 }
         });
 

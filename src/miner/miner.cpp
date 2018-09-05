@@ -173,8 +173,6 @@ namespace merit
             _submit_work{submit_work},
             _pool{static_cast<int>((workers * threads_per_worker) + workers + gpu_devices.size())}
         {
-//            gpu_devices = std::min(gpu_devices, GpuDevices());
-
             assert(workers >= 0);
             assert(threads_per_worker >= 0);
 
@@ -189,6 +187,14 @@ namespace merit
 
             for(int i = 0; i < gpu_devices.size(); i++) {
                 _workers.emplace_back(gpu_devices[i], threads_per_worker, true, _pool, *this);
+            }
+        }
+
+        Miner::~Miner()
+        {
+            if(running()) {
+                stop();
+                wait_for_jobs();
             }
         }
 
@@ -257,9 +263,8 @@ namespace merit
 
             _state = Running;
 
-            std::vector<std::future<void>> jobs;
             for(auto& worker : _workers) {
-                jobs.push_back(_pool.push(
+                _jobs.push_back(_pool.push(
                             [&worker](int id){ 
                                 try {
                                     worker.run(); 
@@ -269,10 +274,15 @@ namespace merit
                             }));
             }
 
-            for(auto& j: jobs) { j.get();}
+            wait_for_jobs();
             _state = NotRunning;
 
             std::cout << "info :: " << "stopped workers." << std::endl;
+        }
+
+        void Miner::wait_for_jobs()
+        {
+            for(auto& j: _jobs) { j.get();}
         }
 
         void Miner::stop()

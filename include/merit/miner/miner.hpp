@@ -112,6 +112,7 @@ namespace merit
                         int threads_per_worker,
                         const std::vector<int>& gpu_devices,
                         util::SubmitWorkFunc submit_work);
+                ~Miner();
 
             public:
                 void submit_job(const stratum::Job&);
@@ -136,11 +137,15 @@ namespace merit
                 Stat& current_stat();
 
             private:
+                void wait_for_jobs();
+
+            private:
                 std::atomic<State> _state;
                 ctpl::thread_pool _pool;
                 util::MaybeWork _next_work;
                 util::SubmitWorkFunc _submit_work;
                 Workers _workers;
+                std::vector<std::future<void>> _jobs;
                 Stats _stats;
                 Stat _total_stats;
                 Stat _current_stat;;
