@@ -488,6 +488,7 @@ namespace merit
                         assert(work->cycle.size() == CUCKOO_PROOF_SIZE);
 
                         std::copy(cycle.begin(), cycle.end(), work->cycle.begin());
+
                         std::array<uint32_t, 8> cycle_hash;
                         std::array<uint8_t, 1 + sizeof(uint32_t) * CUCKOO_PROOF_SIZE> cycle_with_size;
                         cycle_with_size[0] = CUCKOO_PROOF_SIZE;
@@ -502,12 +503,16 @@ namespace merit
                                 cycle_with_size.size());
 
                         std::string cycle_hash_hex;
-                        util::to_hex(cycle_hash, cycle_hash_hex);
-                        std::cout << "info :: " << termcolor::green << "(" << _id << ") found cycle (" << idx << "): " << cycle_hash_hex << termcolor::reset << std::endl;
+                        util::to_hex(cycle_with_size, cycle_hash_hex);
+
                         if(target_test(cycle_hash, work->target)) {
+                            std::cout << "info :: " << termcolor::green << "(" << _id << ") found share (" << idx << "): " << cycle_hash_hex << termcolor::reset << std::endl;
                             stat.shares++;
                             _miner.submit_work(*work);
+                        } else {
+                            std::cout << "info :: " << termcolor::blue << "(" << _id << ") found cycle (" << idx << "): " << cycle_hash_hex << termcolor::reset << std::endl;
                         }
+
                         idx++;
                     }
                 }
