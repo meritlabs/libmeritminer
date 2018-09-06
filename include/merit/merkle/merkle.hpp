@@ -36,6 +36,7 @@
 #include <list>
 #include <vector>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <memory>
 #include <string.h>
@@ -51,7 +52,7 @@ namespace merit {
 
         class MerkleTree {
         public:
-            explicit MerkleTree(const std::vector<std::string> &hashes_list) {
+            explicit MerkleTree(const std::vector<char *> &hashes_list) {
                 steps = calculateSteps(hashes_list);
             }
 
@@ -60,11 +61,15 @@ namespace merit {
         private:
             std::vector<const char *> steps;
 
-            std::vector<const char *> calculateSteps(const std::vector<std::string> &hashes_list);
-            const char* merkleJoin(const char* h1, const char* h2);
+            /**
+             * As input takes array of bytes
+             * So, before use this function you have to convert hex string into byte array(const char*)
+             */
+            std::vector<const char *> calculateSteps(const std::vector<char *> &hashes_list);
+            void merkleJoin(const char* h1, const char* h2, char* dest);
         };
 
-        const char *double_hash(const std::string &str);
+        const unsigned char *double_hash(const unsigned char* str, unsigned int size);
 
     }
 }

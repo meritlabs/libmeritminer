@@ -51,37 +51,26 @@ namespace merit {
             std::string tmp_hash;
             std::stringstream stream;
 
-            std::cout << "before foreach loop" << std::endl;
-
             for (const auto &step: steps) {
-                std::cout << "looping..." << std::endl;
                 std::string tmp{step};
-                std::cout << "Step: " << step << " : " << tmp << std::endl;
                 std::string step_hex;
 
                 merit::util::to_hex(tmp.begin(), tmp.end(), step_hex);
-
-                std::cout << "Step HEX: " << step_hex << std::endl;
-
-//                    std::bitset<picosha2::k_digest_size*8> version_bits(step_binary);
-//                    stream << std::hex << version_bits.to_ullong();
-//                    branches.push_back(stream.str()); stream.str("");
                 branches.push_back(step_hex);
             }
 
-            std::cout << "End loop and function stuff ===" << std::endl;
-
+//            std::cout << "End loop and function stuff ===" << std::endl;
 
             return branches;
         }
 
-        std::vector<const char *> MerkleTree::calculateSteps(const std::vector<std::string> &hashes_list) {
+        std::vector<const char *> MerkleTree::calculateSteps(const std::vector<char*> &hashes_list) {
             std::cout << "=== calculateSteps()" << std::endl;
 
             std::vector<const char *> steps{};
             std::vector<const char *> L{nullptr};
             for (const auto &el: hashes_list) {
-                L.push_back(el.c_str());
+                L.push_back(el);
             }
 
             int startL = 2;
@@ -105,7 +94,10 @@ namespace merit {
                     std::vector<const char*> Ld;
 
                     for (int i = startL; i < Ll; i += 2) {
-                        Ld.push_back(merkleJoin(L[i], L[i+1]));
+                        char *join_res = new char[picosha2::k_digest_size];
+                        merkleJoin(L[i], L[i+1], join_res);
+                        std::cout << "!========= RESULT OF MERKLE JOIN: " << join_res << std::endl;
+                        Ld.push_back(join_res);
                     }
 
                     L.clear(); L.push_back(nullptr);
@@ -124,17 +116,47 @@ namespace merit {
             return steps;
         }
 
-        const char *MerkleTree::merkleJoin(const char *h1, const char *h2){
-            std::string joined = h1;
-            joined.append(h2);
+        void MerkleTree::merkleJoin(const char *h1, const char *h2, char* dest){
+            std::cout << " == merkleJoin == " << std::endl;
+            std::cout << "  h1= " << h1 << std::endl;
+            std::cout << "  h2= " << h2 << std::endl;
 
-            return double_hash(joined);
+            std::string joined{h1};
+            joined += h2;
+
+            unsigned char buf[joined.size()];   // array to hold the result.
+            std::copy(joined.begin(), joined.end(), buf);
+
+//            std::cout << "   joined= " << joined << " | size= " << joined.size() << std::endl;
+//            std::cout << "   buf= " << buf << std::endl;
+//
+//            for (int i = 0; i < 64; ++i) {
+//                std::bitset<8> bitset{buf[i]};
+//                std::cout << i << " := " << bitset << std::endl;
+//            }
+
+//            std::cout << "===   before hashing   ==="<< std::endl;
+
+            auto res = double_hash(buf, joined.size());
+
+//            std::cout << "===   after hashing   ==="<< std::endl;
+//            std::cout << "   res=" << res << std::endl;
+//
+//            // cast from unsigned to the ordinary
+            std::string final{reinterpret_cast<const char*>(res), 32};
+
+//            std::cout << "   final=" << final << " with size=" << final.size() << std::endl;
+//            std::cout << "   final.c_str() =" << final.c_str()<< std::endl;
+
+            std::copy(final.begin(), final.end(), dest);
         }
 
-        const char* double_hash(const std::string& str){
-            auto *result = new unsigned char[str.size()];
-            merit::util::double_sha256(result, reinterpret_cast<const unsigned char *>(str.c_str()), str.size());
-            return reinterpret_cast<const char *>(result);
+        const unsigned char* double_hash(const unsigned char* str, unsigned int size){
+            auto *result = new unsigned char[picosha2::k_digest_size];
+            std::cout << "!!!double_hash!!!" << std::endl;
+            merit::util::double_sha256(result, str, size);
+            std::cout << "   result=" << result << std::endl;
+            return result;
         }
 
     }

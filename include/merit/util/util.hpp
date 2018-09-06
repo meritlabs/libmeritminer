@@ -169,31 +169,13 @@ namespace merit
             boost::algorithm::hex_lower(begin, end, std::back_inserter(res));
         }
 
-//        bool reverse_hex_string(const std::string& str, std::string& res)
-//        {
-//            std::string tmp;
-//
-//            try
-//            {
-//                util::parse_hex(str, tmp);
-//                tmp.reserve();
-//                util::to_hex(tmp, res);
-//
-//                return true;
-//            }
-//            catch (...)
-//            {
-//                return false;
-//            }
-//        }
-
-        std::string HexCharToBin(char c);
-        std::string HexStrToBin(const std::string & hs);
-
         void double_sha256(
                 unsigned char* digest,
                 const unsigned char* data,
                 size_t len);
+
+        int char2int(char input);
+        void hex2bin(const char* src, char* target);
     }
 }
 #endif

@@ -440,8 +440,6 @@ namespace merit
 
             res.add("id", get_solo_job_id());
 
-            std::cout << "0" << std::endl;
-
             auto prev = params.get<std::string>("result.previousblockhash");
 
             // then divide to the 8 sybmols parts, reverse array of this parts and join them together
@@ -463,6 +461,7 @@ namespace merit
 
             // Merkle array of transactions, invites and referrals
             std::vector<std::string> hashes{};
+            std::vector<char *> bin_hashes{};
             int i = 0;
             BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("result.transactions")){
                 if (i != 0)
@@ -480,24 +479,59 @@ namespace merit
                 hashes.push_back(v.second.get<std::string>("hash"));
             }
 
+            // TODO: it's just for testing, remove then
+            hashes = {"46f6d6e43c5ee19e2ec0eb63bdf33793b4d7e4a2999b208aa0346cc887da26a2", "ac344a8fd86d70e0193219b8f968c29361f79ac7a908741096d3a31cae9809e2"};
+            // 310956155a2ac7809c6c67cd5b60402c0a5698a5b6122b563004dcd2204aa6fd
+
+            // prepare hashes
+            // to do it: divide it by 2 bytes and reverse(similar as with prevblockhash)
+            // not sure why should we do that, but pool code doing the same thing
+            std::string reversed_hash{};
+            std::vector<std::string> parts_of_merkle_hash{};
+
+            for (int i = 0; i < hashes.size(); ++i) {
+                // 1. divive by 2 bytes(chars)
+                for (unsigned long offset = 0; offset < hashes[i].size(); offset += 2)
+                    parts_of_merkle_hash.push_back(hashes[i].substr(offset, 2));
+
+                // 2. reverse
+                std::reverse(parts_of_merkle_hash.begin(), parts_of_merkle_hash.end());
+
+                // 3. join
+                for(const auto& part: parts_of_merkle_hash)
+                    reversed_hash += part;
+
+                hashes[i] = reversed_hash;
+                parts_of_merkle_hash.clear(); reversed_hash = "";
+            }
+
             std::cout << "MERKLE HASHES SIZE = " << hashes.size() << std::endl;
             for(const auto& hash: hashes)
                 std::cout << "Hash: " << hash << std::endl;
+
+            // unhex hashes: hex to byte array
+            for(unsigned int i = 0; i < hashes.size(); ++i){
+                std::cout << "Transforming hex to byte array" << std::endl;
+                std::cout << "char array size: " << hashes[i].size() / 2 << std::endl;
+                char* target = new char[hashes[i].size() / 2 + 1];
+                merit::util::hex2bin(hashes[i].c_str(), target);
+                target[hashes[i].size() / 2] = '\0';
+                bin_hashes.push_back(target);
+            }
+
+            std::cout << "MERKLE HASHES IN BINARY = " << bin_hashes.size() << std::endl;
+            for(const auto& hash: bin_hashes)
+                std::cout << "Hash_Bin: " << hash << std::endl;
             std::cout << std::endl << std::endl;
 
-            // Input: 
-            // 1. af5269712e2ccf2d2ff9c3022f03b2b2d252bccc4c01eab5c687f655ba0834cc 
 
-            // Result:
-            // 1. cc3408ba55f687c6b5ea014cccbc52d2b2b2032f02c3f92f2dcf2c2e716952af
-            
             try {
-                auto merkle_tree = merit::merkle::MerkleTree(hashes);
+                auto merkle_tree = merit::merkle::MerkleTree(bin_hashes);
                 auto branches = merkle_tree.branches();
-//            std::cout << "Branches: " << branches.size() << std::endl;
-//            for(const auto& branch: branches){
-//                std::cout << branch << std::endl;
-//            }
+                std::cout << "Branches: " << branches.size() << std::endl;
+                for(const auto& branch: branches){
+                    std::cout << branch << std::endl;
+                }
 
                 // push merkle branches to the result
 

@@ -49,40 +49,26 @@ namespace merit
             picosha2::hash256(d.begin(), d.end(), digest, digest+picosha2::k_digest_size);
         }
 
-        std::string HexCharToBin( char c ) {
-            switch( c ) {
-                case '0'    : return "0000";
-                case '1'    : return "0001";
-                case '2'    : return "0010";
-                case '3'    : return "0011";
-                case '4'    : return "0100";
-                case '5'    : return "0101";
-                case '6'    : return "0110";
-                case '7'    : return "0111";
-                case '8'    : return "1000";
-                case '9'    : return "1001";
-                case 'A'    : return "1010";
-                case 'a'    : return "1010";
-                case 'B'    : return "1011";
-                case 'b'    : return "1011";
-                case 'C'    : return "1100";
-                case 'c'    : return "1100";
-                case 'D'    : return "1101";
-                case 'd'    : return "1101";
-                case 'E'    : return "1110";
-                case 'e'    : return "1110";
-                case 'F'    : return "1111";
-                case 'f'    : return "1111";
-            }
+        int char2int(char input)
+        {
+            if(input >= '0' && input <= '9')
+                return input - '0';
+            if(input >= 'A' && input <= 'F')
+                return input - 'A' + 10;
+            if(input >= 'a' && input <= 'f')
+                return input - 'a' + 10;
+            throw std::invalid_argument("Invalid input string");
         }
 
-
-        std::string HexStrToBin(const std::string & hs) {
-            std::string bin;
-            for(auto c : hs) {
-                bin += HexCharToBin(c);
+        // This function assumes src to be a zero terminated sanitized string with
+        // an even number of [0-9a-f] characters, and target to be sufficiently large
+        void hex2bin(const char* src, char* target)
+        {
+            while(*src && src[1])
+            {
+                *(target++) = char2int(*src)*16 + char2int(src[1]);
+                src += 2;
             }
-            return bin;
         }
 
     }
