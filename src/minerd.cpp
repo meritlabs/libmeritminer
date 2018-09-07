@@ -31,6 +31,7 @@
 #include <merit/miner.hpp>
 #include "merit/termcolor/termcolor.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <memory>
