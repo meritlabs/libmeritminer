@@ -514,16 +514,17 @@ namespace merit
                 auto merkle_tree = merit::merkle::MerkleTree(bin_hashes);
                 auto branches = merkle_tree.branches();
 
-                std::cout << "Branches: " << branches.size() << std::endl;
+                // push merkle branches to the result
+                pt::ptree children;
                 for(const auto& branch: branches){
-                    std::cout << branch << std::endl;
+                    pt::ptree child;
+                    child.put("", branch);
+                    children.push_back(std::make_pair("", child));
                 }
 
-                // push merkle branches to the result
-                // ...
-
+                res.add_child("merkle_braches", children);
             } catch (std::exception &e) {
-                std::cout << "||| Error ||| = " << e.what() << std::endl;
+                std::cout << "An error occurred during 'Merkle Tree' computations = " << e.what() << std::endl;
             }
 
             auto block_version = boost::lexical_cast<int32_t>(params.get<std::string>("result.version")); // get version parameter
