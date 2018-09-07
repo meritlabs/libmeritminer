@@ -479,10 +479,6 @@ namespace merit
                 hashes.push_back(v.second.get<std::string>("hash"));
             }
 
-            // TODO: it's just for testing, remove then
-            hashes = {"46f6d6e43c5ee19e2ec0eb63bdf33793b4d7e4a2999b208aa0346cc887da26a2", "ac344a8fd86d70e0193219b8f968c29361f79ac7a908741096d3a31cae9809e2"};
-            // 310956155a2ac7809c6c67cd5b60402c0a5698a5b6122b563004dcd2204aa6fd
-
             // prepare hashes
             // to do it: divide it by 2 bytes and reverse(similar as with prevblockhash)
             // not sure why should we do that, but pool code doing the same thing
@@ -505,35 +501,26 @@ namespace merit
                 parts_of_merkle_hash.clear(); reversed_hash = "";
             }
 
-            std::cout << "MERKLE HASHES SIZE = " << hashes.size() << std::endl;
-            for(const auto& hash: hashes)
-                std::cout << "Hash: " << hash << std::endl;
-
             // unhex hashes: hex to byte array
             for(unsigned int i = 0; i < hashes.size(); ++i){
-                std::cout << "Transforming hex to byte array" << std::endl;
-                std::cout << "char array size: " << hashes[i].size() / 2 << std::endl;
                 char* target = new char[hashes[i].size() / 2 + 1];
                 merit::util::hex2bin(hashes[i].c_str(), target);
                 target[hashes[i].size() / 2] = '\0';
                 bin_hashes.push_back(target);
             }
 
-            std::cout << "MERKLE HASHES IN BINARY = " << bin_hashes.size() << std::endl;
-            for(const auto& hash: bin_hashes)
-                std::cout << "Hash_Bin: " << hash << std::endl;
-            std::cout << std::endl << std::endl;
-
 
             try {
                 auto merkle_tree = merit::merkle::MerkleTree(bin_hashes);
                 auto branches = merkle_tree.branches();
+
                 std::cout << "Branches: " << branches.size() << std::endl;
                 for(const auto& branch: branches){
                     std::cout << branch << std::endl;
                 }
 
                 // push merkle branches to the result
+                // ...
 
             } catch (std::exception &e) {
                 std::cout << "||| Error ||| = " << e.what() << std::endl;
