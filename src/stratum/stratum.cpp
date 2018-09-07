@@ -464,6 +464,7 @@ namespace merit
             std::vector<char *> bin_hashes{};
             int i = 0;
             BOOST_FOREACH(const pt::ptree::value_type &v, params.get_child("result.transactions")){
+                // to skip the first transaction
                 if (i != 0)
                     hashes.push_back(v.second.get<std::string>("txid"));
 
@@ -522,7 +523,7 @@ namespace merit
                     children.push_back(std::make_pair("", child));
                 }
 
-                res.add_child("merkle_braches", children);
+                res.add_child("merkle_branches", children);
             } catch (std::exception &e) {
                 std::cout << "An error occurred during 'Merkle Tree' computations = " << e.what() << std::endl;
             }
