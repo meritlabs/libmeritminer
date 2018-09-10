@@ -496,7 +496,7 @@ namespace merit
                         switch_pool();
                         std::cout << std::endl << "info: " << "changing pool url to= " << _url << " and trying to connect" << std::endl << std::endl;
 
-                        tries = 0;
+                        tries = 1;
                     }
 
                     //exponential backoff
