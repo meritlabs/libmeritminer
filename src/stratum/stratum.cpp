@@ -374,7 +374,7 @@ namespace merit
             auto prevhash = res.get<std::string>("prevhash");
             auto coinbase1 = res.get<std::string>("coinbase1");
             auto coinbase2 = res.get<std::string>("coinbase2");
-            auto merkle_array = std::vector<int>{};
+            auto merkle_array = res.get_child("merkle_branches");
             auto version = res.get<std::string>("version");
             auto nbits = res.get<std::string>("bits");
             auto edgebits = res.get<int>("edgebits");
@@ -382,9 +382,9 @@ namespace merit
             auto is_clean = res.get<bool>("is_clean");
 
             if(prevhash.size() != 64) { return false; }
-            if(version.size() != 8) { return false; } // problem
+            if(version.size() != 8) { return false; }
             if(nbits.size() != 8) { return false; }
-            if(time.size() != 8) { return false; } // problem
+            if(time.size() != 8) { return false; }
 
             std::lock_guard<std::mutex> guard{_job_mutex};
             Job j;
@@ -409,15 +409,15 @@ namespace merit
 
             j.id = job_id;
 
-//            for(const auto& hex : merkle_array) {
-//                std::string s = hex.second.get_value<std::string>();
-//                util::ubytes bin;
-//                if(!util::parse_hex(s, bin)) {
-//                    return false;
-//                }
-//
-//                j.merkle.push_back(bin);
-//            }
+            for(const auto& hex : merkle_array) {
+                std::string s = hex.second.get_value<std::string>();
+                util::ubytes bin;
+                if(!util::parse_hex(s, bin)) {
+                    return false;
+                }
+
+                j.merkle.push_back(bin);
+            }
 
             j.diff = _next_diff;
             j.clean = is_clean;

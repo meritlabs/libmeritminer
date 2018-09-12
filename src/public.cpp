@@ -230,37 +230,28 @@ namespace merit {
 
                 while (c->miner->running())
                     try {
-                        auto j = c->stratum.get_solo_job(auth_token);
-
-                        std::this_thread::sleep_for(20s);
-
-                        if(j){
-                            std::cout << "There is a job!!!" << std::endl;
-                            std::this_thread::sleep_for(5s);
-//                            break;
-                        }
-//                        if (!j) {
-//                            std::cout << "== NO JOB! ==" << std::endl;
-//                            c->miner->clear_job();
-//                            std::this_thread::sleep_for(50ms);
-//                            continue;
-//                        }
-
-
-                        std::cout << "After getting the job" << std::endl;
-
-//                        c->miner->submit_job(*j);
+                        c->stratum.get_solo_job(auth_token);
 
                         // get block
+                        auto j = c->stratum.get_job();
+                        while(!j.is_initialized()){
+                            std::this_thread::sleep_for(1s);
+                            j = c->stratum.get_job();
+                        }
 
-                        // mine it
+                        // submit and then finding cycles starts
+                        c->miner->submit_job(*j);
+
+                        std::this_thread::sleep_for(10s); // just for testing
 
                         // if good cycle, then submit block
 
                         // again...
 
+//                        std::cout << "Clearing the job" << std::endl;
+//                        c->miner->clear_job();
                     } catch (std::exception &e) {
-                        std::cerr << "error: " << "error getting job: " << e.what() << std::endl;
+                        std::cerr << "error: " << "error getting job for solo mining: " << e.what() << std::endl;
                         std::this_thread::sleep_for(50ms);
                     }
             });
