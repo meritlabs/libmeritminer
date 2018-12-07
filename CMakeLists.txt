@@ -52,8 +52,7 @@ if(CUDA_FOUND)
         src/blake2/blake2b-ref.c
         src/stratum/stratum.cpp
         src/miner/miner.cpp
-        src/util/util.cpp
-        src/nvml/nvml.cpp)
+        src/util/util.cpp)
 else()
     set(COMBINE_LIBS 
         $<TARGET_FILE:meritminer>
@@ -98,7 +97,7 @@ add_executable(merit-minerd src/minerd.cpp)
 if(CMAKE_HOST_WIN32)
 	target_link_libraries(merit-minerd fatmeritminer)
 else()
-	target_link_libraries(merit-minerd fatmeritminer pthread rt dl)
+	target_link_libraries(merit-minerd fatmeritminer pthread ${CUDA_LIBRARIES} dl)
 endif()
 
 install(TARGETS merit-minerd meritminer
@@ -116,7 +115,6 @@ file(GLOB H_MINER include/merit/miner/*.hpp)
 file(GLOB H_PICO include/merit/PicoSHA2/*.h)
 file(GLOB H_STRATUM include/merit/stratum/*.hpp)
 file(GLOB H_UTIL include/merit/util/*.hpp)
-file(GLOB H_NVML include/merit/nvml/*.h)
 install(FILES ${H_PUB} DESTINATION include/merit)
 install(FILES ${H_BLAKE} DESTINATION include/merit/blake)
 install(FILES ${H_CRYPTO} DESTINATION include/merit/crypto)
@@ -126,6 +124,5 @@ install(FILES ${H_MINER} DESTINATION include/merit/miner)
 install(FILES ${H_PICO} DESTINATION include/merit/PicoSHA2)
 install(FILES ${H_STRATUM} DESTINATION include/merit/stratum)
 install(FILES ${H_UTIL} DESTINATION include/merit/util)
-install(FILES ${H_NVML} DESTINATION include/merit/nvml)
 include(CPack)
 

@@ -36,7 +36,6 @@
 #include "device_launch_parameters.h"
 #include "device_functions.h"
 #include "exceptions.h"
-#include "merit/nvml/nvml.h"
 #include "merit/termcolor/termcolor.hpp"
 #include <xmmintrin.h>
 #include <algorithm>
@@ -54,7 +53,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <merit/nvml/nvml.h>
 #include <memory>
 
 #ifdef _WIN32
@@ -121,8 +119,8 @@ struct SipKeys
 
 // const auto DUCK_SIZE_A = 130LL;
 // const auto DUCK_SIZE_B = 85LL;
-const auto DUCK_SIZE_A = 30LL;
-const auto DUCK_SIZE_B = 20LL;
+const auto DUCK_SIZE_A = 100LL;
+const auto DUCK_SIZE_B = 60LL;
 
 const auto DUCK_A_EDGES = (DUCK_SIZE_A * 1024LL);
 const auto DUCK_A_EDGES_64 = (DUCK_A_EDGES * 64LL);
@@ -896,6 +894,8 @@ struct Run
         assert(device >= 0);
         assert(device < buffer_a.size());
 
+        // printf("EDGEBITS = %d\tDUCK_SIZE_A = %d\tDUCK_SIZE_B = %d\tbuffer_size = %lu\tbuffer_size_2 = %lu\n", EDGEBITS, DUCK_SIZE_A, DUCK_SIZE_B, buffer_size, buffer_size_2);
+
         u32 host_a[256 * 256];
 
         size_t free_device_mem = 0;
@@ -1022,26 +1022,20 @@ size_t CudaGetFreeMemory(int device){
     return free;
 }
 
-namespace nvml = merit::nvml;
-
-std::unique_ptr<nvml::nvml_handle, int (*)(nvml::nvml_handle *)> initNVML(){
-    auto nvml = std::unique_ptr<nvml::nvml_handle, int (*)(nvml::nvml_handle *)>(nvml::nvml_create(), nvml::nvml_destroy);
-
-    if (nvml == nullptr)
-        std::cerr << termcolor::red << "Failed to initialize NVML" << termcolor::reset << std::endl;
-
-    return nvml;
+namespace merit
+{
+    struct GPUInfo
+    {
+        size_t id;
+        std::string title;
+        long long int total_memory;
+    };
 }
-
 
 std::vector<merit::GPUInfo> GPUsInfo()
 {
     std::vector<merit::GPUInfo> res{};
 
-    // Initialize NVML library
-    auto nvml = initNVML();
-
-    nvml::nvmlDevice_t device;
     int devices = CudaDevices();
 
     for (int index = 0; index < devices; index ++) {
@@ -1051,43 +1045,6 @@ std::vector<merit::GPUInfo> GPUsInfo()
         item.id = index;
         item.title = prop.name;
         item.total_memory = prop.totalGlobalMem;
-
-        // Get device
-        auto nvmlres = nvml->nvmlDeviceGetHandleByIndex(index, &device);
-        if (nvml::NVML_SUCCESS != nvmlres)
-            std::cerr << termcolor::red << "Failed to get handle for device " << index << " " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
-
-        // Temperature
-        unsigned int temp;
-        nvmlres = nvml->nvmlDeviceGetTemperature(device, 0, &temp);
-        if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << termcolor::red << "Failed to get temperature of device" << index << " " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
-            item.temperature = -1;
-        } else {
-            item.temperature = temp;
-        }
-
-        // GPU cores and memory utilization
-        nvml::nvmlUtilization_t gpuUtil;
-        nvmlres = nvml->nvmlDeviceGetUtilizationRates(device, &gpuUtil);
-        if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << termcolor::red << "Failed to get utilization of device " << index << " : " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
-            item.gpu_util = -1;
-            item.memory_util = -1;
-        } else {
-            item.gpu_util = gpuUtil.gpu;
-            item.memory_util = gpuUtil.memory;
-        }
-
-        // Fan speed
-        unsigned int speed;
-        nvmlres = nvml->nvmlDeviceGetFanSpeed(device, &speed);
-        if (nvml::NVML_SUCCESS != nvmlres){
-            std::cerr << termcolor::red << "Failed to get fan speed of device " <<  index <<  " : " << nvml->nvmlErrorString(nvmlres) << termcolor::reset << std::endl;
-            item.fan_speed = -1;
-        } else {
-            item.fan_speed = speed;
-        }
 
         // add device info to array
         res.push_back(item);
