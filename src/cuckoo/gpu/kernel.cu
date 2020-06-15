@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013-2018 John Tromp
  * Copyright (c) 2018 Jiri Vadura - photon
- * Copyright (C) 2018-2019 The Merit Foundation
+ * Copyright (C) 2018-2020 The Merit Foundation
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
